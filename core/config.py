@@ -32,7 +32,7 @@ EMBEDDING_SIZE = 512
 FACE_INPUT_SIZE = (112, 112)  # EdgeFace input size
 
 # Detection input size (will be adjusted based on model)
-DETECTION_INPUT_SIZE = (640, 640)
+DETECTION_INPUT_SIZE = (192, 192)  # Must match face_detection.onnx input
 
 # Pipeline parameters
 COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", "30"))

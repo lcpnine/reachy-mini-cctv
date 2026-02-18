@@ -1,0 +1,41 @@
+# IDE/Editor
+.cursorignore
+.cursorrules  # 프로젝트별 규칙은 커밋, 이건 로컬 무시용
+.claudeignore  # 로컬 무시용
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Reachy Mini 로컬 데이터
+*.npy  # 기록된 motion/audio 데이터
+media_cache/
+temp_frames/
+
+# OS
+.DS_Store
+Thumbs.db
+.DS_Store?
+
+# Logs
+*.log
+logs/
+
+# Env secrets (필요시)
+.env
+secrets.json
+
+# Build
+dist/
+build/
+*.egg-info/

@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
-    container_name: reachy-cctv-backend
+    container_name: reachy-mini-cctv-backend
     ports:
       - "8000:8000"
     volumes:
@@ -50,7 +50,7 @@ services:
       dockerfile: ../docker/frontend.Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000
-    container_name: reachy-cctv-web
+    container_name: reachy-mini-cctv-web
     ports:
       - "3000:3000"
     depends_on:
@@ -58,7 +58,15 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -81,4 +89,4 @@ volumes:
 
 networks:
   default:
-    name: reachy-cctv-network
+    name: reachy-mini-cctv-network

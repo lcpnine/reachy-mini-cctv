@@ -7,12 +7,12 @@ Wants=network-online.target
 Type=simple
 User=pi
 Group=pi
-WorkingDirectory=/home/pi/reachy-cctv
-Environment="PATH=/home/pi/reachy-cctv/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=/home/pi/reachy-cctv/venv/bin/python3 /home/pi/reachy-cctv/main.py
+WorkingDirectory=/home/pi/reachy-mini-cctv
+Environment="PATH=/home/pi/reachy-mini-cctv/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/pi/reachy-mini-cctv/venv/bin/python3 /home/pi/reachy-mini-cctv/main.py
 
 # Environment file (contains secrets like Telegram token)
-EnvironmentFile=/home/pi/reachy-cctv/.env
+EnvironmentFile=/home/pi/reachy-mini-cctv/.env
 
 # Restart policy
 Restart=on-failure
@@ -25,7 +25,7 @@ CPUQuota=80%
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=reachy-cctv
+SyslogIdentifier=reachy-mini-cctv
 
 [Install]
 WantedBy=multi-user.target

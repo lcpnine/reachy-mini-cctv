@@ -34,8 +34,8 @@ sudo apt install -y \
 
 ```bash
 cd ~
-git clone https://github.com/yourusername/reachy-cctv.git
-cd reachy-cctv
+git clone https://github.com/yourusername/reachy-mini-cctv.git
+cd reachy-mini-cctv
 ```
 
 ### 3. Set Up Python Environment
@@ -143,45 +143,45 @@ For automatic startup on boot:
 
 ```bash
 # Copy the service file
-sudo cp reachy-cctv.service /etc/systemd/system/
+sudo cp reachy-mini-cctv.service /etc/systemd/system/
 
 # Reload systemd
 sudo systemctl daemon-reload
 
 # Enable the service
-sudo systemctl enable reachy-cctv
+sudo systemctl enable reachy-mini-cctv
 
 # Start the service
-sudo systemctl start reachy-cctv
+sudo systemctl start reachy-mini-cctv
 ```
 
 ### 2. Check Service Status
 
 ```bash
-sudo systemctl status reachy-cctv
+sudo systemctl status reachy-mini-cctv
 ```
 
 ### 3. View Logs
 
 ```bash
 # View recent logs
-sudo journalctl -u reachy-cctv -n 50
+sudo journalctl -u reachy-mini-cctv -n 50
 
 # Follow logs in real-time
-sudo journalctl -u reachy-cctv -f
+sudo journalctl -u reachy-mini-cctv -f
 ```
 
 ### 4. Restart/Stop Service
 
 ```bash
 # Restart
-sudo systemctl restart reachy-cctv
+sudo systemctl restart reachy-mini-cctv
 
 # Stop
-sudo systemctl stop reachy-cctv
+sudo systemctl stop reachy-mini-cctv
 
 # Disable auto-start
-sudo systemctl disable reachy-cctv
+sudo systemctl disable reachy-mini-cctv
 ```
 
 ## Web Dashboard Setup
@@ -375,11 +375,11 @@ CAMERA_FPS = 15  # Lower FPS reduces load
 ## Updating the System
 
 ```bash
-cd ~/reachy-cctv
+cd ~/reachy-mini-cctv
 git pull
 source venv/bin/activate
 pip install --upgrade -r requirements.txt
-sudo systemctl restart reachy-cctv
+sudo systemctl restart reachy-mini-cctv
 ```
 
 ## Additional Resources
@@ -392,5 +392,5 @@ sudo systemctl restart reachy-cctv
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/yourusername/reachy-cctv/issues
+- GitHub Issues: https://github.com/yourusername/reachy-mini-cctv/issues
 - Documentation: See README.md and ARCHITECTURE.md

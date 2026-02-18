@@ -35,8 +35,8 @@ The fastest way to get started:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/lcpnine/reachy-cctv.git
-cd reachy-cctv
+git clone https://github.com/lcpnine/reachy-mini-cctv.git
+cd reachy-mini-cctv
 
 # 2. Download ONNX models
 python scripts/setup_models_from_insightface.py
@@ -195,7 +195,7 @@ docker compose down -v
 ### Project Structure
 
 ```
-reachy-cctv/
+reachy-mini-cctv/
 ├── core/              # Face detection & recognition
 ├── db/                # Database layer (SQLite)
 ├── camera/            # Camera capture & pipeline
@@ -234,16 +234,16 @@ For automatic startup on boot:
 
 ```bash
 # Install service
-sudo cp reachy-cctv.service /etc/systemd/system/
+sudo cp reachy-mini-cctv.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable reachy-cctv
-sudo systemctl start reachy-cctv
+sudo systemctl enable reachy-mini-cctv
+sudo systemctl start reachy-mini-cctv
 
 # Check status
-sudo systemctl status reachy-cctv
+sudo systemctl status reachy-mini-cctv
 
 # View logs
-sudo journalctl -u reachy-cctv -f
+sudo journalctl -u reachy-mini-cctv -f
 ```
 
 ## API Documentation
@@ -329,8 +329,8 @@ Lower latency and no dependency on your PC once deployed.
    source /venvs/apps_venv/bin/activate   # if available
    # Or: python3 -m venv venv && source venv/bin/activate
 
-   git clone https://github.com/lcpnine/reachy-cctv.git
-   cd reachy-cctv
+   git clone https://github.com/lcpnine/reachy-mini-cctv.git
+   cd reachy-mini-cctv
    pip install -r requirements.txt
    pip install reachy-mini   # Official SDK for Wireless (camera: mini.media.get_frame())
    python scripts/setup_models_from_insightface.py
@@ -390,7 +390,7 @@ MIT License - see LICENSE file for details
 
 ## Support
 
-- **GitHub Issues**: https://github.com/lcpnine/reachy-cctv/issues
+- **GitHub Issues**: https://github.com/lcpnine/reachy-mini-cctv/issues
 - **Documentation**: See docs in this repository
 - **Reachy Mini**: https://docs.pollen-robotics.com/
 

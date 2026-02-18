@@ -718,9 +718,9 @@ def test_sse_stream(client):
 - Auto-restart on crash (Restart=on-failure)
 
 **Done Criteria:**
-- `sudo systemctl start reachy-cctv` starts the service
+- `sudo systemctl start reachy-mini-cctv` starts the service
 - The process auto-restarts if it dies
-- Logs are viewable via `journalctl -u reachy-cctv`
+- Logs are viewable via `journalctl -u reachy-mini-cctv`
 
 ---
 
@@ -743,14 +743,14 @@ def test_sse_stream(client):
 - Multi-stage build to keep the final image small (build stage for compiling native deps, runtime stage for running)
 
 **Done Criteria:**
-- `docker build -f docker/backend.Dockerfile -t reachy-cctv-backend .` succeeds
-- `docker run --rm reachy-cctv-backend` starts the FastAPI server and health check returns 200
+- `docker build -f docker/backend.Dockerfile -t reachy-mini-cctv-backend .` succeeds
+- `docker run --rm reachy-mini-cctv-backend` starts the FastAPI server and health check returns 200
 - Image size is under 2 GB on ARM64
 
 **Test:**
 ```bash
-docker build -f docker/backend.Dockerfile -t reachy-cctv-backend .
-docker run --rm -d -p 8000:8000 --name test-backend reachy-cctv-backend
+docker build -f docker/backend.Dockerfile -t reachy-mini-cctv-backend .
+docker run --rm -d -p 8000:8000 --name test-backend reachy-mini-cctv-backend
 curl -f http://localhost:8000/health
 docker stop test-backend
 ```
@@ -766,15 +766,15 @@ docker stop test-backend
 - Expose port 3000
 
 **Done Criteria:**
-- `docker build -f docker/frontend.Dockerfile -t reachy-cctv-web ./web` succeeds
+- `docker build -f docker/frontend.Dockerfile -t reachy-mini-cctv-web ./web` succeeds
 - Container serves the Next.js app on port 3000
 - API URL is configurable at build time
 
 **Test:**
 ```bash
-docker build -f docker/frontend.Dockerfile -t reachy-cctv-web ./web \
+docker build -f docker/frontend.Dockerfile -t reachy-mini-cctv-web ./web \
   --build-arg NEXT_PUBLIC_API_URL=http://backend:8000
-docker run --rm -d -p 3000:3000 --name test-web reachy-cctv-web
+docker run --rm -d -p 3000:3000 --name test-web reachy-mini-cctv-web
 curl -f http://localhost:3000
 docker stop test-web
 ```

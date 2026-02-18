@@ -9,6 +9,25 @@ export function getCameraStreamUrl(): string {
   return `${API_BASE_URL}/api/camera/stream`;
 }
 
+/** Recognition result for one face in the current frame (live overlay) */
+export interface RecognitionFace {
+  is_known: boolean;
+  user_name: string;
+  confidence: number;
+}
+
+export interface RecognitionState {
+  faces: RecognitionFace[];
+  updated_at: string | null;
+}
+
+/** Poll current frame recognition state for live feed overlay */
+export async function getRecognitionState(): Promise<RecognitionState> {
+  const response = await fetch(`${API_BASE_URL}/api/camera/recognition-state`);
+  if (!response.ok) throw new Error('Failed to fetch recognition state');
+  return response.json();
+}
+
 // Types
 export interface User {
   user_id: number;

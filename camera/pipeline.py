@@ -14,6 +14,7 @@ from core.recognizer import FaceRecognizer, RecognitionResult
 from camera.capture import CameraInterface
 from camera.frame_buffer import update as update_frame_buffer
 from camera.photo import BestFrameSelector, PhotoStorage
+from camera.recognition_state import update as update_recognition_state, FaceRecognitionResult
 from db.event_repo import EventRepository
 from core.config import COOLDOWN_SECONDS
 
@@ -120,6 +121,7 @@ class Pipeline:
 
         if not bboxes:
             self._frames_without_faces += 1
+            update_recognition_state([])
             # No faces detected - reset frame collection if active
             if self.best_frame_selector is not None:
                 self.best_frame_selector = None
@@ -129,6 +131,9 @@ class Pipeline:
         # Log when faces are detected (helps confirm pipeline is working)
         self._frames_without_faces = 0
         print(f"[Pipeline] Detected {len(bboxes)} face(s)")
+
+        # Build recognition results for this frame (for live feed overlay)
+        current_frame_faces: list[FaceRecognitionResult] = []
 
         # Process each detected face
         for bbox in bboxes:
@@ -148,6 +153,19 @@ class Pipeline:
             # Recognize
             result = self.recognizer.recognize(embedding)
 
+            # Collect for live overlay (even when cooldown skips logging)
+            user_name = "Unknown"
+            if result.is_known and result.user_id is not None:
+                from db.user_repo import UserRepository
+                user_repo = UserRepository()
+                user = user_repo.get_user(result.user_id)
+                user_name = user.name if user else f"User {result.user_id}"
+            current_frame_faces.append(FaceRecognitionResult(
+                is_known=result.is_known,
+                user_name=user_name,
+                confidence=result.confidence,
+            ))
+
             # Check cooldown
             if self._is_in_cooldown(result.user_id):
                 continue
@@ -164,6 +182,7 @@ class Pipeline:
                 if event:
                     events.append(event)
 
+        update_recognition_state(current_frame_faces)
         return events
 
     def _handle_known_user(

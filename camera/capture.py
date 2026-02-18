@@ -152,30 +152,32 @@ class ReachyMiniCamera(CameraInterface):
     def start(self):
         """Start capturing frames."""
         if not self.sdk_available:
-            self.fallback.start()
-            return
+            raise RuntimeError(
+                "Reachy SDK를 찾을 수 없습니다 (reachy_mini 또는 reachy_sdk_api 설치 필요). "
+                "--camera reachy 사용 시 폴백하지 않습니다."
+            )
         if self.sdk_kind == "reachy_mini":
             try:
                 self._reachy_ctx = self._ReachyMini(media_backend=REACHY_MEDIA_BACKEND)
                 self.reachy = self._reachy_ctx.__enter__()
                 print("Connected to Reachy Mini (reachy_mini)")
             except Exception as e:
-                print(f"Failed to connect to Reachy Mini: {e}")
-                print("Falling back to OpenCV")
-                self.sdk_available = False
-                self.fallback = OpenCVCamera(source=0)
-                self.fallback.start()
+                raise RuntimeError(
+                    "Reachy Mini 연결 실패 (--camera reachy 지정 시 폴백하지 않음). "
+                    "로봇/데몬이 켜져 있는지, 같은 네트워크/호스트인지 확인하세요. "
+                    f"원인: {e}"
+                ) from e
         else:
             try:
                 from reachy_sdk_api import ReachySDK
                 self.reachy = ReachySDK(host="localhost")
                 print("Connected to Reachy Mini (reachy_sdk_api)")
             except Exception as e:
-                print(f"Failed to connect to Reachy Mini: {e}")
-                print("Falling back to OpenCV")
-                self.sdk_available = False
-                self.fallback = OpenCVCamera(source=0)
-                self.fallback.start()
+                raise RuntimeError(
+                    "Reachy Mini 연결 실패 (--camera reachy 지정 시 폴백하지 않음). "
+                    "로봇/데몬이 켜져 있는지 확인하세요. "
+                    f"원인: {e}"
+                ) from e
 
     def read(self) -> Optional[np.ndarray]:
         """

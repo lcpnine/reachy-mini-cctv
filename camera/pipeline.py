@@ -81,6 +81,9 @@ class Pipeline:
         self.thread: Optional[Thread] = None
         self.stop_event = ThreadEvent()
 
+        # Debug: count frames with zero faces to log periodic hint
+        self._frames_without_faces = 0
+
         print("Pipeline initialized")
 
     def _hash_embedding(self, embedding: np.ndarray) -> int:
@@ -116,11 +119,16 @@ class Pipeline:
         bboxes = self.detector.detect(frame)
 
         if not bboxes:
+            self._frames_without_faces += 1
             # No faces detected - reset frame collection if active
             if self.best_frame_selector is not None:
                 self.best_frame_selector = None
                 self.collecting_frames_for = None
             return events
+
+        # Log when faces are detected (helps confirm pipeline is working)
+        self._frames_without_faces = 0
+        print(f"[Pipeline] Detected {len(bboxes)} face(s)")
 
         # Process each detected face
         for bbox in bboxes:
@@ -134,6 +142,7 @@ class Pipeline:
             embedding = self.embedder.embed(face_crop)
 
             if embedding is None:
+                print("[Pipeline] Face detected but embedding failed (crop may be too small or invalid)")
                 continue
 
             # Recognize
@@ -351,11 +360,18 @@ class Pipeline:
                 events = self.run_once()
                 frame_count += 1
 
-                # Print FPS every 100 frames
+                # Print FPS and detection hint every 100 frames
                 if frame_count % 100 == 0:
                     elapsed = time.time() - start_time
                     fps = frame_count / elapsed
                     print(f"Pipeline FPS: {fps:.1f}")
+                # Hint every 500 frames if no face was ever detected
+                if frame_count % 500 == 0 and frame_count > 0 and self._frames_without_faces >= 500:
+                    print(
+                        "[Pipeline] No faces detected in last 500 frames. "
+                        "If you see a face on the live feed, try lowering DETECTION_THRESHOLD "
+                        "(e.g. 0.5) in .env"
+                    )
 
                 # Small sleep to prevent CPU spinning if camera is slow
                 time.sleep(0.001)

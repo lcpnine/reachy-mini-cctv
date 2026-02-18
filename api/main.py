@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from api import deps
-from api.routes import users, events, photos, camera
+from api.routes import users, events, photos, camera, debug
 from api.schemas import HealthResponse
 
 
@@ -58,6 +58,7 @@ app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(events.router, prefix="/api/events", tags=["events"])
 app.include_router(photos.router, prefix="/api/photos", tags=["photos"])
 app.include_router(camera.router, prefix="/api/camera", tags=["camera"])
+app.include_router(debug.router, prefix="/api/debug", tags=["debug"])
 
 
 @app.get("/", response_model=dict)

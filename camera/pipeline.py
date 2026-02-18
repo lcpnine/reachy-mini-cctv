@@ -12,6 +12,7 @@ from core.detector import FaceDetector, BBox
 from core.embedder import FaceEmbedder
 from core.recognizer import FaceRecognizer, RecognitionResult
 from camera.capture import CameraInterface
+from camera.frame_buffer import update as update_frame_buffer
 from camera.photo import BestFrameSelector, PhotoStorage
 from db.event_repo import EventRepository
 from core.config import COOLDOWN_SECONDS
@@ -329,6 +330,7 @@ class Pipeline:
         if frame is None:
             return []
 
+        update_frame_buffer(frame)
         return self.process_frame(frame)
 
     def run(self):

@@ -4,6 +4,11 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+/** Live camera MJPEG stream URL for use in img src */
+export function getCameraStreamUrl(): string {
+  return `${API_BASE_URL}/api/camera/stream`;
+}
+
 // Types
 export interface User {
   user_id: number;

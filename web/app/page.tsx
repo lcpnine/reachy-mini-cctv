@@ -8,6 +8,7 @@ import {
   getEventStats,
   getPhotoUrl,
 } from "@/lib/api"
+import LiveCameraFeed from "./components/LiveCameraFeed"
 import { useEffect, useState } from "react"
 
 export default function LiveFeedPage() {
@@ -115,6 +116,21 @@ export default function LiveFeedPage() {
               {sseConnected ? "🟢 Live" : "🔴 Offline"}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Live Camera Feed */}
+      <div className="mb-8">
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-6 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Live Camera
+            </h2>
+            <span className="text-sm text-gray-500">
+              Reachy&apos;s view
+            </span>
+          </div>
+          <LiveCameraFeed />
         </div>
       </div>
 

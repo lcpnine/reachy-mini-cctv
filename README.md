@@ -117,6 +117,10 @@ DB_PATH=./data/cctv.db
 FAISS_INDEX_PATH=./data/faces.index
 PHOTO_DIR=./data/photos/
 
+# Reachy Mini Wireless (when CAMERA_SOURCE=reachy)
+# REACHY_MEDIA_BACKEND=gstreamer   # when running on robot (SSH)
+# REACHY_MEDIA_BACKEND=webrtc      # when running from your computer (remote)
+
 # Thresholds
 DETECTION_THRESHOLD=0.7
 RECOGNITION_THRESHOLD=0.45
@@ -303,6 +307,60 @@ See `DEPLOYMENT.md` for detailed tuning guide.
 - **Secure API**: Use firewall rules to restrict access
 - **Photo privacy**: Photos contain biometric data - handle carefully
 - **Regular backups**: Backup `data/` directory regularly
+
+## Deploying on Reachy Mini Wireless
+
+To run this CCTV app on **Reachy Mini Wireless** (robot with battery + Wi‑Fi), you can either run the app **on the robot** (SSH) or **remotely** from your computer.
+
+### Option A: Run on the robot (SSH) — recommended for testing
+
+Lower latency and no dependency on your PC once deployed.
+
+1. **Connect via SSH**
+   ```bash
+   ssh pollen@reachy-mini
+   # Password: root
+   ```
+   (Robot and computer must be on the same network; hostname is often `reachy-mini` or `reachy-mini.local`.)
+
+2. **On the robot, set up the project**
+   ```bash
+   # Optional: use the pre-installed venv or create your own
+   source /venvs/apps_venv/bin/activate   # if available
+   # Or: python3 -m venv venv && source venv/bin/activate
+
+   git clone https://github.com/lcpnine/reachy-cctv.git
+   cd reachy-cctv
+   pip install -r requirements.txt
+   pip install reachy-mini   # Official SDK for Wireless (camera: mini.media.get_frame())
+   python scripts/setup_models_from_insightface.py
+   cp .env.example .env && nano .env   # Set TELEGRAM_*, CAMERA_SOURCE=reachy
+   ```
+
+3. **Run the app**
+   ```bash
+   python main.py --camera reachy
+   ```
+   The daemon is already running when the robot is powered on. Use `ReachyMini(media_backend="gstreamer")` when running on the robot (this project’s camera layer can be configured for that).
+
+### Option B: Run remotely (from your computer)
+
+Your Python code runs on your machine; the robot sends camera over the network (WebRTC).
+
+1. **Same network**: Ensure the robot and your computer are on the same Wi‑Fi.
+2. **Install on your computer**
+   ```bash
+   pip install reachy-mini
+   ```
+3. **Point the app at the robot**: Use `ReachyMini(connection_mode="network")` and `media_backend="webrtc"` so camera comes from the robot. The REST daemon on the robot is at `http://reachy-mini.local:8000` (or the robot’s IP).
+
+**Note:** This codebase’s Reachy camera layer supports both the legacy `reachy_sdk_api` and the official `reachy_mini` SDK. For Wireless, the `reachy_mini` SDK with the appropriate `media_backend` (`gstreamer` on device, `webrtc` when remote) is used.
+
+### References
+
+- [Reachy Mini Quickstart (run on robot via SSH)](https://huggingface.co/docs/reachy_mini/SDK/quickstart)
+- [Reachy Mini Python SDK (camera, media backends)](https://huggingface.co/docs/reachy_mini/SDK/python-sdk)
+- Media backends: `default` (Lite), `gstreamer` (Lite or Wireless on device), `webrtc` (Wireless, remote)
 
 ## Documentation
 

@@ -17,6 +17,12 @@ venv/
 pip-log.txt
 pip-delete-this-directory.txt
 
+# Runtime data (DB, indexes, photos — do not commit)
+data/
+*.db
+*.db-shm
+*.db-wal
+
 # Reachy Mini 로컬 데이터
 *.npy  # 기록된 motion/audio 데이터
 media_cache/
@@ -39,3 +45,7 @@ secrets.json
 dist/
 build/
 *.egg-info/
+
+# ML models (downloaded via scripts)
+core/models/*.onnx
+core/models/.cache/

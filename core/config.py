@@ -56,6 +56,8 @@ BACKOFF_VISITOR_TIMEOUT = 300  # 5 minutes - remove visitor from tracker after t
 # Camera parameters
 CAMERA_SOURCE = os.getenv("CAMERA_SOURCE", "0")  # "0" for webcam, path for video file, or "reachy" for Reachy Mini
 CAMERA_FPS = 30
+# Reachy Mini Wireless: "gstreamer" when running on robot (SSH), "webrtc" when running remotely
+REACHY_MEDIA_BACKEND = os.getenv("REACHY_MEDIA_BACKEND", "gstreamer")
 
 # API
 API_HOST = os.getenv("API_HOST", "0.0.0.0")

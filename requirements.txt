@@ -4,9 +4,9 @@ opencv-python>=4.8.0
 numpy>=1.24.0
 faiss-cpu>=1.7.4
 
-# Face recognition models
-# MediaPipe for face detection preprocessing
-# InsightFace for SCRFD and EdgeFace models
+# Face recognition models (download via scripts/download_models.py)
+huggingface_hub>=0.20.0
+insightface>=0.7.0
 
 # Database
 sqlalchemy>=2.0.0
@@ -33,6 +33,6 @@ pytest>=7.4.0
 pytest-asyncio>=0.21.0
 httpx>=0.25.0
 
-# Camera (Reachy Mini SDK)
-# Note: reachy-sdk-api should be installed separately if using Reachy Mini
-# pip install reachy-sdk-api
+# Camera (Reachy Mini)
+# For Reachy Mini Wireless use: pip install reachy-mini
+# Optional (legacy): pip install reachy-sdk-api

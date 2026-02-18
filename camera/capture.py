@@ -6,7 +6,7 @@ import numpy as np
 from typing import Optional
 from abc import ABC, abstractmethod
 
-from core.config import CAMERA_SOURCE, CAMERA_FPS
+from core.config import CAMERA_SOURCE, CAMERA_FPS, REACHY_MEDIA_BACKEND
 
 
 class CameraInterface(ABC):
@@ -122,29 +122,43 @@ class OpenCVCamera(CameraInterface):
 class ReachyMiniCamera(CameraInterface):
     """
     Reachy Mini SDK camera capture.
-    Falls back to OpenCV if SDK is not available.
+    Prefers official reachy_mini SDK (Wireless: gstreamer/webrtc); falls back to
+    reachy_sdk_api (ReachySDK) then OpenCV if unavailable.
     """
 
     def __init__(self):
         """Initialize Reachy Mini camera."""
         self.reachy = None
+        self._reachy_ctx = None  # for reachy_mini context manager
         self.sdk_available = False
+        self.sdk_kind = None  # "reachy_mini" | "reachy_sdk_api"
 
         try:
-            from reachy_sdk_api import ReachySDK
+            from reachy_mini import ReachyMini
+            self._ReachyMini = ReachyMini
             self.sdk_available = True
-            print("Reachy SDK available")
+            self.sdk_kind = "reachy_mini"
+            print("Reachy Mini SDK (reachy_mini) available")
         except ImportError:
-            print("Warning: Reachy SDK not available, will use OpenCV fallback")
-            self.fallback = OpenCVCamera(source=0)
+            try:
+                from reachy_sdk_api import ReachySDK
+                self.sdk_available = True
+                self.sdk_kind = "reachy_sdk_api"
+                print("Reachy SDK (reachy_sdk_api) available")
+            except ImportError:
+                print("Warning: Reachy SDK not available, will use OpenCV fallback")
+                self.fallback = OpenCVCamera(source=0)
 
     def start(self):
         """Start capturing frames."""
-        if self.sdk_available:
+        if not self.sdk_available:
+            self.fallback.start()
+            return
+        if self.sdk_kind == "reachy_mini":
             try:
-                from reachy_sdk_api import ReachySDK
-                self.reachy = ReachySDK(host='localhost')
-                print("Connected to Reachy Mini")
+                self._reachy_ctx = self._ReachyMini(media_backend=REACHY_MEDIA_BACKEND)
+                self.reachy = self._reachy_ctx.__enter__()
+                print("Connected to Reachy Mini (reachy_mini)")
             except Exception as e:
                 print(f"Failed to connect to Reachy Mini: {e}")
                 print("Falling back to OpenCV")
@@ -152,7 +166,16 @@ class ReachyMiniCamera(CameraInterface):
                 self.fallback = OpenCVCamera(source=0)
                 self.fallback.start()
         else:
-            self.fallback.start()
+            try:
+                from reachy_sdk_api import ReachySDK
+                self.reachy = ReachySDK(host="localhost")
+                print("Connected to Reachy Mini (reachy_sdk_api)")
+            except Exception as e:
+                print(f"Failed to connect to Reachy Mini: {e}")
+                print("Falling back to OpenCV")
+                self.sdk_available = False
+                self.fallback = OpenCVCamera(source=0)
+                self.fallback.start()
 
     def read(self) -> Optional[np.ndarray]:
         """
@@ -161,45 +184,51 @@ class ReachyMiniCamera(CameraInterface):
         Returns:
             BGR image as numpy array, or None if no frame available
         """
-        if self.sdk_available and self.reachy is not None:
-            try:
-                # Get frame from Reachy Mini's camera
-                # Note: Adjust this based on actual Reachy SDK API
+        if not self.sdk_available or self.reachy is None:
+            return self.fallback.read() if hasattr(self, "fallback") else None
+        try:
+            if self.sdk_kind == "reachy_mini":
+                frame = self.reachy.media.get_frame()
+            else:
                 frame = self.reachy.cameras.teleop.get_frame()
-
-                # Convert to BGR if necessary (Reachy might provide RGB)
-                if frame is not None and len(frame.shape) == 3:
-                    if frame.shape[2] == 3:
-                        # Assume RGB, convert to BGR
-                        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-                return frame
-            except Exception as e:
-                print(f"Error reading from Reachy camera: {e}")
+            if frame is None:
                 return None
-        else:
-            return self.fallback.read()
+            if len(frame.shape) == 3 and frame.shape[2] == 3:
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            return frame
+        except Exception as e:
+            print(f"Error reading from Reachy camera: {e}")
+            return None
 
     def stop(self):
         """Stop capturing and release resources."""
-        if self.sdk_available and self.reachy is not None:
+        if not self.sdk_available:
+            self.fallback.stop()
+            return
+        if self.sdk_kind == "reachy_mini" and self._reachy_ctx is not None:
             try:
-                # Disconnect from Reachy
-                # Note: Adjust based on actual SDK cleanup method
+                self._reachy_ctx.__exit__(None, None, None)
+                self._reachy_ctx = None
+                self.reachy = None
+                print("Disconnected from Reachy Mini (reachy_mini)")
+            except Exception as e:
+                print(f"Error disconnecting from Reachy: {e}")
+        elif self.sdk_kind == "reachy_sdk_api" and self.reachy is not None:
+            try:
                 del self.reachy
                 self.reachy = None
-                print("Disconnected from Reachy Mini")
+                print("Disconnected from Reachy Mini (reachy_sdk_api)")
             except Exception as e:
                 print(f"Error disconnecting from Reachy: {e}")
         else:
-            self.fallback.stop()
+            if hasattr(self, "fallback"):
+                self.fallback.stop()
 
     def is_opened(self) -> bool:
         """Check if camera is open and ready."""
         if self.sdk_available:
             return self.reachy is not None
-        else:
-            return self.fallback.is_opened()
+        return getattr(self, "fallback", None) is not None and self.fallback.is_opened()
 
 
 class CameraCapture:

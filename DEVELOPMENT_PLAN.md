@@ -52,12 +52,8 @@ reachy-mini-cctv/
 │   │   └── photos.py        #   Photo serving
 │   ├── deps.py              #   Shared dependencies (DB, FAISS index)
 │   └── schemas.py           #   Pydantic models
-├── frontend/                # Phase 7: Next.js dashboard
-│   ├── src/app/
-│   │   ├── page.tsx         #   Live event feed
-│   │   ├── users/           #   User management
-│   │   └── photos/          #   Unknown visitor gallery
-│   ├── Dockerfile           #   Frontend container
+├── web/                     # Phase 7: Next.js dashboard
+│   ├── app/                 #   App Router (page.tsx, users/, photos/)
 │   └── ...
 ├── scripts/                 # Utilities
 │   ├── register_face.py     #   CLI: register a user from image
@@ -72,7 +68,7 @@ reachy-mini-cctv/
 │   └── test_api.py
 ├── docker/                  # Phase 9: Docker configuration
 │   ├── backend.Dockerfile   #   Backend (FastAPI + pipeline) image
-│   └── frontend.Dockerfile  #   Next.js dashboard image
+│   └── frontend.Dockerfile  #   web (Next.js) image
 ├── docker-compose.yml       #   Full-stack orchestration
 ├── requirements.txt
 ├── .env.example
@@ -519,7 +515,7 @@ def test_independent_visitors():
 
 ## Phase 6 — FastAPI Backend
 
-**Goal:** Provide a REST API and real-time event stream (SSE) for the Next.js frontend to consume.
+**Goal:** Provide a REST API and real-time event stream (SSE) for the web (Next.js) app to consume.
 
 **Dependency:** Phase 3 (DB), Phase 4 (Pipeline callbacks)
 
@@ -612,7 +608,7 @@ def test_sse_stream(client):
 
 ---
 
-## Phase 7 — Next.js Dashboard
+## Phase 7 — Web Dashboard (Next.js)
 
 **Goal:** Build a web dashboard providing real-time event monitoring, user management, and an unknown visitor photo gallery.
 
@@ -666,6 +662,7 @@ def test_sse_stream(client):
 - Photos are displayed in a grid
 - Date filtering works
 - Enlarged view works
+
 
 ---
 
@@ -729,7 +726,7 @@ def test_sse_stream(client):
 
 ## Phase 9 — Docker Containerization
 
-**Goal:** Containerize the entire stack (backend + frontend) with Docker and Docker Compose for reproducible, production-ready deployment. The SQLite database, FAISS index, photos, and ONNX models are persisted via named volumes so that data survives container rebuilds.
+**Goal:** Containerize the entire stack (backend + web) with Docker and Docker Compose for reproducible, production-ready deployment. The SQLite database, FAISS index, photos, and ONNX models are persisted via named volumes so that data survives container rebuilds.
 
 **Dependency:** Phases 1–8 complete (can also be started after Phase 6 for iterative development)
 
@@ -758,10 +755,10 @@ curl -f http://localhost:8000/health
 docker stop test-backend
 ```
 
-### Task 9.2: Frontend Dockerfile
+### Task 9.2: Web Dockerfile
 
 **Work:**
-- Create `docker/frontend.Dockerfile`
+- Create `docker/frontend.Dockerfile` (builds the `web/` app)
 - Multi-stage build:
   - Stage 1 (`node:24.13.1-alpine`): install deps, run `npm run build`
   - Stage 2 (`node:24.13.1-alpine`): copy build output, run `next start`
@@ -769,17 +766,17 @@ docker stop test-backend
 - Expose port 3000
 
 **Done Criteria:**
-- `docker build -f docker/frontend.Dockerfile -t reachy-cctv-frontend ./frontend` succeeds
+- `docker build -f docker/frontend.Dockerfile -t reachy-cctv-web ./web` succeeds
 - Container serves the Next.js app on port 3000
 - API URL is configurable at build time
 
 **Test:**
 ```bash
-docker build -f docker/frontend.Dockerfile -t reachy-cctv-frontend ./frontend \
+docker build -f docker/frontend.Dockerfile -t reachy-cctv-web ./web \
   --build-arg NEXT_PUBLIC_API_URL=http://backend:8000
-docker run --rm -d -p 3000:3000 --name test-frontend reachy-cctv-frontend
+docker run --rm -d -p 3000:3000 --name test-web reachy-cctv-web
 curl -f http://localhost:3000
-docker stop test-frontend
+docker stop test-web
 ```
 
 ### Task 9.3: Docker Compose Orchestration
@@ -794,13 +791,13 @@ docker stop test-frontend
     - Ports: `8000:8000`
     - Restart policy: `unless-stopped`
     - Device access: map `/dev/video0` or Reachy Mini USB device for camera access (configurable)
-  - `frontend`: builds from `docker/frontend.Dockerfile`
+  - `web`: builds from `docker/frontend.Dockerfile` (context: `./web`)
     - Depends on: `backend`
     - Ports: `3000:3000`
     - Build args: `NEXT_PUBLIC_API_URL=http://backend:8000`
     - Restart policy: `unless-stopped`
 - Named volumes for persistent data
-- Network: default bridge network (frontend → backend via service name)
+- Network: default bridge network (web → backend via service name)
 
 **Compose file structure:**
 ```yaml
@@ -822,9 +819,9 @@ services:
     # devices:
     #   - /dev/video0:/dev/video0
 
-  frontend:
+  web:
     build:
-      context: ./frontend
+      context: ./web
       dockerfile: ../docker/frontend.Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://backend:8000
@@ -840,7 +837,7 @@ volumes:
 
 **Done Criteria:**
 - `docker compose up --build` starts both services
-- Frontend can reach the backend API (health check passes)
+- web app can reach the backend API (health check passes)
 - Data persists across `docker compose down` and `docker compose up`
 - `docker compose down -v` removes all data (clean slate)
 
@@ -852,7 +849,7 @@ docker compose up --build -d
 # Verify backend
 curl -f http://localhost:8000/health
 
-# Verify frontend
+# Verify web
 curl -f http://localhost:3000
 
 # Verify data persistence
@@ -911,7 +908,7 @@ Phase 1 (Detection) ──→ Phase 2 (Embedding + FAISS) ──→ Phase 4 (Pip
                                                               ↑                        ↓
 Phase 3 (Database)  ─────────────────────────────────────────┘          Phase 8 (Integration)
                                                                               ↑
-Phase 6 (FastAPI) ──→ Phase 7 (Next.js Dashboard) ──────────────────────────┘
+Phase 6 (FastAPI) ──→ Phase 7 (Web Dashboard) ──────────────────────────────┘
                                                                               ↓
                                                                  Phase 9 (Docker)
 ```

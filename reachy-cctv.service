@@ -1,0 +1,31 @@
+[Unit]
+Description=Reachy Mini CCTV Face Recognition System
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/reachy-cctv
+Environment="PATH=/home/pi/reachy-cctv/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/pi/reachy-cctv/venv/bin/python3 /home/pi/reachy-cctv/main.py
+
+# Environment file (contains secrets like Telegram token)
+EnvironmentFile=/home/pi/reachy-cctv/.env
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+
+# Resource limits (optional, adjust as needed for Pi 5)
+MemoryLimit=2G
+CPUQuota=80%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=reachy-cctv
+
+[Install]
+WantedBy=multi-user.target

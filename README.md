@@ -35,7 +35,7 @@ The fastest way to get started:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/reachy-cctv.git
+git clone https://github.com/lcpnine/reachy-cctv.git
 cd reachy-cctv
 
 # 2. Download ONNX models
@@ -332,10 +332,13 @@ MIT License - see LICENSE file for details
 
 ## Support
 
-- **GitHub Issues**: https://github.com/yourusername/reachy-cctv/issues
+- **GitHub Issues**: https://github.com/lcpnine/reachy-cctv/issues
 - **Documentation**: See docs in this repository
 - **Reachy Mini**: https://docs.pollen-robotics.com/
 
 ---
 
-Built with ❤️ for the Reachy Mini robot community
+Built by [lcpnine](https://github.com/lcpnine)
+- **GitHub**: https://github.com/lcpnine
+- **Email**: [lcpnine@gmail.com](mailto:lcpnine@gmail.com)
+- **LinkedIn**: [Yu Taek Lee](https://www.linkedin.com/in/yutaek/)

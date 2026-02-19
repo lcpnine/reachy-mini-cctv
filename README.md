@@ -88,6 +88,12 @@ python main.py
 
 ### Web Dashboard Setup
 
+Node.js 24.x required. On Debian/Ubuntu/Raspberry Pi OS, use NodeSource if apt's version is too old:
+```bash
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
 ```bash
 cd web
 npm install
@@ -337,6 +343,12 @@ Lower latency and no dependency on your PC once deployed.
    cp .env.example .env && nano .env   # Set TELEGRAM_*, CAMERA_SOURCE=reachy
    ```
 
+   **Node.js 24.x** (for web dashboard, if using `run-on-robot.sh`):
+   ```bash
+   curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+   sudo apt-get install -y nodejs
+   ```
+
 3. **Run the app**
    ```bash
    python main.py --camera reachy
@@ -383,7 +395,7 @@ export ROBOT_PROJECT=reachy-mini-cctv
 ./scripts/run-on-robot.sh
 ```
 
-The robot must have the project and venv set up, and `tmux` installed (`sudo apt install tmux`).
+The robot must have the project and venv set up, **Node.js 24.x** (see above), and `tmux` installed (`sudo apt install tmux`).
 
 ### Where to run the Dashboard
 

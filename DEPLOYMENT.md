@@ -7,6 +7,7 @@ This guide explains how to deploy the Reachy Mini CCTV system on a Raspberry Pi 
 - Raspberry Pi 5 (4GB or 8GB RAM recommended)
 - Raspberry Pi OS (64-bit, Bookworm or later)
 - Python 3.11 or later
+- Node.js 24.x (24.13.1 recommended, for web dashboard)
 - Camera (Reachy Mini built-in or USB webcam)
 - Internet connection for Telegram notifications
 
@@ -27,8 +28,26 @@ sudo apt install -y \
     libgl1 \
     libglib2.0-0 \
     libsqlite3-0 \
-    git
+    git \
+    curl
 ```
+
+### 1b. Install Node.js 24.x (for web dashboard)
+
+The web dashboard requires Node.js 24.x. Use NodeSource (apt's default is often too old):
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+Verify:
+```bash
+node -v   # v24.x.x
+npm -v    # 10.x.x or higher
+```
+
+> **Note:** For native addon compilation (if needed): `sudo apt install -y gcc g++ make`
 
 ### 2. Clone the Repository
 

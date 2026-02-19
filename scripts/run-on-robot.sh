@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Run Reachy Mini CCTV on the robot via SSH.
-# The app runs inside a tmux session so it keeps running after you disconnect.
+# Starts both backend (API + camera) and web dashboard.
+# Runs inside a tmux session so it keeps running after you disconnect.
 #
 # Usage:
 #   ./scripts/run-on-robot.sh              # start in tmux (detached)
@@ -11,6 +12,9 @@
 # Prerequisites:
 #   - SSH access to the robot (e.g. ssh-copy-id pollen@reachy-mini)
 #   - Project and venv already set up on the robot
+#   - Node.js 24.x on the robot (for web dashboard):
+#       curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+#       sudo apt-get install -y nodejs
 #   - tmux optional (falls back to nohup if not installed)
 #
 
@@ -30,9 +34,15 @@ if [[ -n "$ROBOT_VENV" ]]; then
 else
   ACTIVATE='source "$REMOTE_DIR/venv/bin/activate"'
 fi
-# Run on robot: set REMOTE_DIR, then cd, activate venv, run main.py
+
+# Backend: main.py
 RUN_CMD="REMOTE_DIR=$REMOTE_DIR_EXPR; cd \"\$REMOTE_DIR\" && $ACTIVATE && python main.py --camera reachy"
+
+# Web: ensure build exists, then npm start
+WEB_CMD="REMOTE_DIR=$REMOTE_DIR_EXPR; cd \"\$REMOTE_DIR/web\" && (test -d .next || (npm install && npm run build)) && npm start"
+
 LOG_FILE="/tmp/reachy-cctv.log"
+WEB_LOG_FILE="/tmp/reachy-cctv-web.log"
 
 SSH_TARGET="${ROBOT_USER}@${ROBOT_HOST}"
 
@@ -46,7 +56,7 @@ fi
 
 case "$MODE" in
   background)
-    echo "Starting Reachy Mini CCTV on $SSH_TARGET..."
+    echo "Starting Reachy Mini CCTV (backend + web) on $SSH_TARGET..."
     ssh "$SSH_TARGET" bash -s << ENDSSH
       set -e
       REMOTE_DIR=\$HOME/$ROBOT_PROJECT
@@ -54,13 +64,20 @@ case "$MODE" in
         if tmux has-session -t $TMUX_SESSION 2>/dev/null; then
           echo "Session already running. Attach: ssh $SSH_TARGET -t tmux attach -t $TMUX_SESSION"
         else
-          tmux new-session -d -s $TMUX_SESSION "$RUN_CMD"
-          echo "Started (tmux). Attach to logs: ssh $SSH_TARGET -t tmux attach -t $TMUX_SESSION"
+          tmux new-session -d -s $TMUX_SESSION -n backend "$RUN_CMD"
+          tmux new-window -t $TMUX_SESSION -n web "$WEB_CMD"
+          echo "Started backend + web (tmux)."
+          echo "  - API:  http://$ROBOT_HOST:8501"
+          echo "  - Web:  http://$ROBOT_HOST:3000"
+          echo "Attach to logs: ssh $SSH_TARGET -t tmux attach -t $TMUX_SESSION"
         fi
       else
         cd "\$REMOTE_DIR" && $ACTIVATE && nohup python main.py --camera reachy > $LOG_FILE 2>&1 &
-        echo "Started (nohup, tmux not installed). Logs: $LOG_FILE"
-        echo "View logs: ssh $SSH_TARGET tail -f $LOG_FILE"
+        cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup npm start > $WEB_LOG_FILE 2>&1 &
+        echo "Started (nohup, tmux not installed)."
+        echo "  - API:  http://$ROBOT_HOST:8501"
+        echo "  - Web:  http://$ROBOT_HOST:3000"
+        echo "Logs: ssh $SSH_TARGET tail -f $LOG_FILE"
       fi
 ENDSSH
     ;;
@@ -69,17 +86,30 @@ ENDSSH
     ssh -t "$SSH_TARGET" bash -s << ENDSSH
       REMOTE_DIR=\$HOME/$ROBOT_PROJECT
       if command -v tmux &>/dev/null; then
-        tmux has-session -t $TMUX_SESSION 2>/dev/null || tmux new-session -d -s $TMUX_SESSION "$RUN_CMD"
+        tmux has-session -t $TMUX_SESSION 2>/dev/null || {
+          tmux new-session -d -s $TMUX_SESSION -n backend "$RUN_CMD"
+          tmux new-window -t $TMUX_SESSION -n web "$WEB_CMD"
+        }
         exec tmux attach -t $TMUX_SESSION
       else
         cd "\$REMOTE_DIR" && $ACTIVATE && nohup python main.py --camera reachy > $LOG_FILE 2>&1 &
+        cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup npm start > $WEB_LOG_FILE 2>&1 &
         sleep 1
         exec tail -f $LOG_FILE
       fi
 ENDSSH
     ;;
   foreground)
-    echo "Running in foreground on $SSH_TARGET (Ctrl+C will stop the app)..."
-    ssh -t "$SSH_TARGET" "REMOTE_DIR=\$HOME/$ROBOT_PROJECT; cd \"\$REMOTE_DIR\" && $ACTIVATE && python main.py --camera reachy"
+    echo "Running in foreground on $SSH_TARGET (Ctrl+C will stop both)..."
+    ssh -t "$SSH_TARGET" bash -s << ENDSSH
+      REMOTE_DIR=\$HOME/$ROBOT_PROJECT
+      cleanup() { kill \$BACKEND_PID \$WEB_PID 2>/dev/null; exit 0; }
+      trap cleanup INT TERM
+      cd "\$REMOTE_DIR" && $ACTIVATE && python main.py --camera reachy &
+      BACKEND_PID=\$!
+      cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && npm start &
+      WEB_PID=\$!
+      wait
+ENDSSH
     ;;
 esac

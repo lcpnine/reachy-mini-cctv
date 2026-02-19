@@ -49,3 +49,6 @@ build/
 # ML models (downloaded via scripts)
 core/models/*.onnx
 core/models/.cache/
+
+# debugging note
+debugging/**/*

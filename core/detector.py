@@ -76,10 +76,15 @@ class FaceDetector:
         # Derive the expected input size from the model itself
         input_meta = self.session.get_inputs()[0]
         self.input_name = input_meta.name
-        # Shape is typically [1, 3, H, W] or ['N', 3, H, W]
+        # Shape is typically [1, 3, H, W] — but H/W may be dynamic ('?' or strings)
         raw_shape = input_meta.shape
-        self.input_height = int(raw_shape[2])
-        self.input_width = int(raw_shape[3])
+        try:
+            self.input_height = int(raw_shape[2])
+            self.input_width = int(raw_shape[3])
+        except (ValueError, TypeError):
+            # Dynamic input size — default to 640×640 (standard for SCRFD)
+            self.input_height = 640
+            self.input_width = 640
         self.input_size = (self.input_height, self.input_width)
 
         self.output_names = [o.name for o in self.session.get_outputs()]

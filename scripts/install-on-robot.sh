@@ -29,9 +29,13 @@ pip install --upgrade pip
 pip install -r requirements.txt
 pip install "reachy-mini[gstreamer]"
 
-# Download ONNX models
-echo "Downloading face recognition models..."
-python scripts/setup_models_from_insightface.py
+# Download ONNX models (skip if already present)
+if [[ -f core/models/face_detection.onnx ]] && [[ -f core/models/edgeface_xs_gamma_06.onnx ]]; then
+  echo "Models already present, skipping download."
+else
+  echo "Downloading face recognition models..."
+  python scripts/setup_models_from_insightface.py || true
+fi
 
 # Create .env if missing
 if [[ ! -f .env ]]; then

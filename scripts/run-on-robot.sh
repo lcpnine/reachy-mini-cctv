@@ -11,7 +11,7 @@
 #   ./scripts/run-on-robot.sh --sync        # rsync project to robot, then start
 #
 # Prerequisites:
-#   - SSH access to the robot (e.g. ssh-copy-id pollen@reachy-mini)
+#   - SSH access to the robot (e.g. ssh-copy-id pollen@reachy-mini.local)
 #   - Project and venv already set up on the robot
 #   - Node.js 24.x on the robot (for web dashboard):
 #       curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -

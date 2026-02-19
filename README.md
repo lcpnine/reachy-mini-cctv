@@ -339,7 +339,7 @@ Lower latency and no dependency on your PC once deployed.
 
 1. **Connect via SSH**
    ```bash
-   ssh pollen@reachy-mini
+   ssh pollen@reachy-mini.local
    # Password: root
    ```
    (Robot and computer must be on the same network; hostname is often `reachy-mini` or `reachy-mini.local`.)

@@ -1,15 +1,39 @@
+#!/usr/bin/env python3
 """
 Setup models using the InsightFace package.
-This is the easiest way to obtain the required ONNX models.
+Downloads the buffalo_l (or buffalo_sc) model pack and copies
+the detection and recognition ONNX files into core/models/.
+
+Verification: after copying, checks that the detection model has
+multiple outputs (SCRFD) and the embedding model has a single
+high-dimensional output.
 """
-import sys
 import shutil
+import sys
 from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.config import MODELS_DIR, FACE_DETECTION_MODEL, FACE_EMBEDDING_MODEL
+from core.config import FACE_DETECTION_MODEL, FACE_EMBEDDING_MODEL, MODELS_DIR
+
+
+def verify_detection_model(path: Path) -> bool:
+    """Return True if path is a valid SCRFD detection model (6+ outputs)."""
+    import onnxruntime as ort
+    sess = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+    return len(sess.get_outputs()) >= 6
+
+
+def verify_embedding_model(path: Path) -> bool:
+    """Return True if path looks like a face embedding model (1 output, ≥128-d)."""
+    import onnxruntime as ort
+    sess = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+    if len(sess.get_outputs()) != 1:
+        return False
+    out_shape = sess.get_outputs()[0].shape
+    # Expect something like [1, 512] or [None, 512]
+    return len(out_shape) == 2 and (isinstance(out_shape[1], int) and out_shape[1] >= 128)
 
 
 def main():
@@ -18,103 +42,102 @@ def main():
     print("=" * 60)
     print()
 
-    # Check if insightface is installed
     try:
         import insightface
         print("✓ InsightFace package found")
     except ImportError:
-        print("✗ InsightFace package not found")
-        print("\nPlease install it:")
-        print("  pip install insightface")
+        print("✗ InsightFace not installed.  Install with:")
+        print("    pip install insightface")
         sys.exit(1)
 
-    # Initialize FaceAnalysis (this downloads models automatically)
-    print("\nInitializing FaceAnalysis...")
-    print("This will download models to ~/.insightface/models/")
-    print("(This may take a few minutes on first run)")
-    print()
-
+    # This triggers model download to ~/.insightface/models/
+    print("\nInitializing FaceAnalysis (downloads models on first run)...")
     try:
         from insightface.app import FaceAnalysis
-        app = FaceAnalysis(providers=['CPUExecutionProvider'])
+        app = FaceAnalysis(providers=["CPUExecutionProvider"])
         app.prepare(ctx_id=0, det_size=(640, 640))
-        print("✓ Models downloaded and initialized successfully")
+        print("✓ Models downloaded")
     except Exception as e:
-        print(f"✗ Error initializing FaceAnalysis: {e}")
+        print(f"✗ FaceAnalysis init failed: {e}")
         sys.exit(1)
 
-    # Find the model files in InsightFace cache
     insightface_dir = Path.home() / ".insightface" / "models"
+    print(f"\nSearching for ONNX files in {insightface_dir} ...")
 
-    print(f"\nSearching for models in: {insightface_dir}")
+    all_onnx = list(insightface_dir.rglob("*.onnx"))
+    print(f"Found {len(all_onnx)} .onnx file(s)")
 
-    # Look for SCRFD detection model
-    detection_models = list(insightface_dir.rglob("scrfd*.onnx")) + \
-                      list(insightface_dir.rglob("*det*.onnx"))
+    # Classify each file
+    det_candidates = []
+    emb_candidates = []
 
-    # Look for recognition/embedding models
-    embedding_models = list(insightface_dir.rglob("*w600k*.onnx")) + \
-                      list(insightface_dir.rglob("*arcface*.onnx")) + \
-                      list(insightface_dir.rglob("*recognition*.onnx"))
+    for p in all_onnx:
+        try:
+            if verify_detection_model(p):
+                det_candidates.append(p)
+                print(f"  [DET] {p.name}  ({p.stat().st_size / 1024:.0f} KB)")
+            elif verify_embedding_model(p):
+                emb_candidates.append(p)
+                print(f"  [EMB] {p.name}  ({p.stat().st_size / 1024:.0f} KB)")
+            else:
+                print(f"  [???] {p.name}  (skipped)")
+        except Exception:
+            print(f"  [ERR] {p.name}  (failed to load)")
 
-    print(f"Found {len(detection_models)} detection model(s)")
-    print(f"Found {len(embedding_models)} embedding model(s)")
-    print()
-
-    # Copy models to our models directory
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
-    if detection_models:
-        src = detection_models[0]
-        print(f"Copying detection model:")
-        print(f"  From: {src}")
-        print(f"  To:   {FACE_DETECTION_MODEL}")
-        shutil.copy2(src, FACE_DETECTION_MODEL)
-        print("✓ Detection model copied")
-    else:
-        print("⚠ No detection model found")
-
+    # ---- Detection model ----
     print()
-
-    if embedding_models:
-        src = embedding_models[0]
-        print(f"Copying embedding model:")
-        print(f"  From: {src}")
-        print(f"  To:   {FACE_EMBEDDING_MODEL}")
-        shutil.copy2(src, FACE_EMBEDDING_MODEL)
-        print("✓ Embedding model copied")
+    if det_candidates:
+        # Prefer the smallest (SCRFD-500M is ~2–3 MB)
+        src = min(det_candidates, key=lambda p: p.stat().st_size)
+        print(f"Copying detection model: {src.name} → {FACE_DETECTION_MODEL.name}")
+        shutil.copy2(src, FACE_DETECTION_MODEL)
+        print("✓ Detection model ready")
     else:
-        print("⚠ No embedding model found")
+        print("⚠ No detection model found among InsightFace files.")
+        print("  Run `python scripts/download_models.py` to download directly from HuggingFace.")
 
+    # ---- Embedding model ----
+    print()
+    if emb_candidates:
+        src = min(emb_candidates, key=lambda p: p.stat().st_size)
+        print(f"Copying embedding model: {src.name} → {FACE_EMBEDDING_MODEL.name}")
+        shutil.copy2(src, FACE_EMBEDDING_MODEL)
+        print("✓ Embedding model ready")
+    else:
+        print("⚠ No embedding model found among InsightFace files.")
+
+    # ---- Final verification ----
     print()
     print("=" * 60)
+    import onnxruntime as ort
 
-    # Verify models exist
-    if FACE_DETECTION_MODEL.exists() and FACE_EMBEDDING_MODEL.exists():
-        print("✓ Setup complete! Both models are ready.")
-
-        # Show model info
-        import onnxruntime as ort
-        print("\nModel Information:")
-        print("-" * 60)
-
-        det_session = ort.InferenceSession(str(FACE_DETECTION_MODEL))
-        print(f"Detection model:")
-        print(f"  Input: {det_session.get_inputs()[0].shape}")
-        print(f"  Outputs: {len(det_session.get_outputs())}")
-
-        emb_session = ort.InferenceSession(str(FACE_EMBEDDING_MODEL))
-        print(f"\nEmbedding model:")
-        print(f"  Input: {emb_session.get_inputs()[0].shape}")
-        print(f"  Output: {emb_session.get_outputs()[0].shape}")
-
+    all_ok = True
+    if FACE_DETECTION_MODEL.exists():
+        sess = ort.InferenceSession(str(FACE_DETECTION_MODEL), providers=["CPUExecutionProvider"])
+        n_out = len(sess.get_outputs())
+        inp = sess.get_inputs()[0]
+        print(f"Detection  : input {inp.shape}, {n_out} outputs  ✓" if n_out >= 6
+              else f"Detection  : input {inp.shape}, {n_out} outputs  ⚠ (expected ≥6)")
+        if n_out < 6:
+            all_ok = False
     else:
-        print("⚠ Setup incomplete. Please check errors above.")
-        print("\nYou may need to manually copy the models from:")
-        print(f"  {insightface_dir}")
-        print("To:")
-        print(f"  {MODELS_DIR}")
+        print("Detection  : MISSING")
+        all_ok = False
 
+    if FACE_EMBEDDING_MODEL.exists():
+        sess = ort.InferenceSession(str(FACE_EMBEDDING_MODEL), providers=["CPUExecutionProvider"])
+        out = sess.get_outputs()[0]
+        print(f"Embedding  : input {sess.get_inputs()[0].shape}, output {out.shape}  ✓")
+    else:
+        print("Embedding  : MISSING")
+        all_ok = False
+
+    if all_ok:
+        print("\n✓ Setup complete — both models verified!")
+    else:
+        print("\n⚠ Setup incomplete. See notes above.")
     print("=" * 60)
 
 

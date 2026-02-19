@@ -1,31 +1,29 @@
 """
 Face Embedding Module using ONNX Runtime.
-Extracts 512-dimensional embeddings from face images using EdgeFace or similar models.
+Extracts 512-dimensional embeddings from face images using MobileFaceNet (w600k_mbf)
+or compatible face recognition models.
 """
-import cv2
-import numpy as np
-import onnxruntime as ort
 from pathlib import Path
 from typing import Optional
 
-from core.config import (
-    FACE_EMBEDDING_MODEL,
-    EMBEDDING_SIZE,
-    FACE_INPUT_SIZE
-)
+import cv2
+import numpy as np
+import onnxruntime as ort
+
+from core.config import FACE_EMBEDDING_MODEL, FACE_INPUT_SIZE
 
 
 class FaceEmbedder:
     """
     Face embedding extraction using ONNX models.
-    Supports EdgeFace-XS and other face recognition models.
+    Supports MobileFaceNet (w600k_mbf), EdgeFace-XS, and other models
+    that output a single embedding vector.
     """
 
     def __init__(
         self,
         model_path: Path = FACE_EMBEDDING_MODEL,
         input_size: tuple[int, int] = FACE_INPUT_SIZE,
-        embedding_size: int = EMBEDDING_SIZE
     ):
         """
         Initialize the face embedder.
@@ -33,16 +31,14 @@ class FaceEmbedder:
         Args:
             model_path: Path to the ONNX model file
             input_size: Model input size (height, width)
-            embedding_size: Expected embedding dimension
         """
         self.model_path = model_path
         self.input_size = input_size
-        self.embedding_size = embedding_size
 
         if not self.model_path.exists():
             raise FileNotFoundError(
                 f"Face embedding model not found at {self.model_path}. "
-                f"Please run 'python scripts/setup_models_from_insightface.py' "
+                f"Please run 'python scripts/download_models.py' "
                 f"or place the model manually."
             )
 
@@ -61,9 +57,21 @@ class FaceEmbedder:
         self.input_name = self.session.get_inputs()[0].name
         self.output_name = self.session.get_outputs()[0].name
 
-        print(f"FaceEmbedder initialized with model: {self.model_path.name}")
-        print(f"Input shape: {self.session.get_inputs()[0].shape}")
-        print(f"Output shape: {self.session.get_outputs()[0].shape}")
+        # Auto-detect embedding size from model output shape
+        out_shape = self.session.get_outputs()[0].shape
+        # Shape is typically [1, 512] or [None, 512]
+        self.embedding_size = int(out_shape[-1]) if out_shape[-1] is not None else 512
+
+        # Auto-detect input size from model if available
+        in_shape = self.session.get_inputs()[0].shape
+        if len(in_shape) == 4 and isinstance(in_shape[2], int) and isinstance(in_shape[3], int):
+            self.input_size = (int(in_shape[2]), int(in_shape[3]))
+
+        print(f"FaceEmbedder initialized: {self.model_path.name}")
+        print(f"  Input : {self.input_name} {self.session.get_inputs()[0].shape}")
+        print(f"  Output: {self.output_name} {out_shape}")
+        print(f"  Embedding size: {self.embedding_size}")
+        print(f"  Input size (H×W): {self.input_size}")
 
     def preprocess(self, face_image: np.ndarray) -> np.ndarray:
         """
@@ -81,8 +89,7 @@ class FaceEmbedder:
         # Convert BGR to RGB
         rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
 
-        # Normalize to [-1, 1] or [0, 1] depending on model
-        # Most face recognition models use [-1, 1] normalization
+        # Normalize to [-1, 1] (standard for InsightFace / ArcFace models)
         normalized = (rgb.astype(np.float32) - 127.5) / 127.5
 
         # Transpose to CHW format (channels first)
@@ -116,16 +123,17 @@ class FaceEmbedder:
             face_image: Input BGR face image (OpenCV format)
 
         Returns:
-            512-dimensional L2-normalized embedding, or None if extraction fails
+            L2-normalized embedding vector, or None if extraction fails
         """
         if face_image is None or face_image.size == 0:
             return None
 
-        try:
-            # Preprocess
-            input_data = self.preprocess(face_image)
+        # Reject very small crops that would produce garbage embeddings
+        if face_image.shape[0] < 10 or face_image.shape[1] < 10:
+            return None
 
-            # Run inference
+        try:
+            input_data = self.preprocess(face_image)
             output = self.session.run([self.output_name], {self.input_name: input_data})[0]
 
             # Extract embedding (remove batch dimension)
@@ -137,9 +145,7 @@ class FaceEmbedder:
                       f"got {len(embedding)}")
 
             # L2 normalize
-            normalized = self.normalize_embedding(embedding)
-
-            return normalized
+            return self.normalize_embedding(embedding)
 
         except Exception as e:
             print(f"Error extracting embedding: {e}")
@@ -147,9 +153,7 @@ class FaceEmbedder:
 
     def embed_batch(self, face_images: list[np.ndarray]) -> list[Optional[np.ndarray]]:
         """
-        Extract embeddings from multiple face images.
-        Note: This processes images sequentially. For true batch processing,
-        modify to create a batched input tensor.
+        Extract embeddings from multiple face images (sequential).
 
         Args:
             face_images: List of BGR face images
@@ -157,11 +161,7 @@ class FaceEmbedder:
         Returns:
             List of embeddings (None for failed extractions)
         """
-        embeddings = []
-        for face_image in face_images:
-            embedding = self.embed(face_image)
-            embeddings.append(embedding)
-        return embeddings
+        return [self.embed(img) for img in face_images]
 
     def cosine_similarity(
         self,
@@ -169,15 +169,7 @@ class FaceEmbedder:
         embedding2: np.ndarray
     ) -> float:
         """
-        Calculate cosine similarity between two embeddings.
-        For L2-normalized embeddings, this is simply the dot product.
-
-        Args:
-            embedding1: First embedding
-            embedding2: Second embedding
-
-        Returns:
-            Cosine similarity score [-1, 1]
+        Cosine similarity between two L2-normalized embeddings (= dot product).
         """
         return float(np.dot(embedding1, embedding2))
 
@@ -186,14 +178,5 @@ class FaceEmbedder:
         embedding1: np.ndarray,
         embedding2: np.ndarray
     ) -> float:
-        """
-        Calculate Euclidean distance between two embeddings.
-
-        Args:
-            embedding1: First embedding
-            embedding2: Second embedding
-
-        Returns:
-            Euclidean distance
-        """
+        """Euclidean distance between two embeddings."""
         return float(np.linalg.norm(embedding1 - embedding2))

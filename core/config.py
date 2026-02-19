@@ -21,7 +21,7 @@ FACE_DETECTION_MODEL = MODELS_DIR / "face_detection.onnx"
 FACE_EMBEDDING_MODEL = MODELS_DIR / "edgeface_xs_gamma_06.onnx"
 
 # Detection thresholds
-DETECTION_CONFIDENCE_THRESHOLD = float(os.getenv("DETECTION_THRESHOLD", "0.7"))
+DETECTION_CONFIDENCE_THRESHOLD = float(os.getenv("DETECTION_THRESHOLD", "0.5"))
 RECOGNITION_THRESHOLD = float(os.getenv("RECOGNITION_THRESHOLD", "0.45"))
 
 # NMS (Non-Maximum Suppression) parameters
@@ -31,8 +31,8 @@ NMS_THRESHOLD = 0.4
 EMBEDDING_SIZE = 512
 FACE_INPUT_SIZE = (112, 112)  # EdgeFace input size
 
-# Detection input size (will be adjusted based on model)
-DETECTION_INPUT_SIZE = (192, 192)  # Must match face_detection.onnx input
+# NOTE: Detection input size is now auto-detected from the ONNX model itself
+# inside FaceDetector.__init__().  No hardcoded DETECTION_INPUT_SIZE needed.
 
 # Pipeline parameters
 COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", "30"))

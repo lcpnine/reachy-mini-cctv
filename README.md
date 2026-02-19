@@ -269,6 +269,21 @@ Key endpoints:
 
 ## Troubleshooting
 
+### Web Dashboard "This site can't be reached" (Reachy Mini)
+
+When running on the robot with `run-on-robot.sh`, if `http://reachy-mini.local:3000` doesn't load from your computer:
+
+1. **Same network**: PC and robot must be on the same Wi‑Fi. Test: `ping reachy-mini.local`
+2. **Use robot IP** if mDNS fails: `ssh pollen@reachy-mini.local "hostname -I"` → then open `http://<IP>:3000`
+3. **Verify servers are running**:
+   ```bash
+   ssh pollen@reachy-mini.local -t tmux attach -t reachy-mini-cctv  # Check web window for errors
+   ssh pollen@reachy-mini.local "ss -tlnp | grep -E '3000|8501'"  # Ports listening?
+   ```
+4. **Firewall** (on robot): `sudo ufw status` → if active, allow: `sudo ufw allow 3000/tcp && sudo ufw allow 8501/tcp`
+
+Reachy Mini does **not** require explicitly opening ports in normal setups; the web server binds to `0.0.0.0` by default.
+
 ### Camera not detected
 ```bash
 # Check camera devices

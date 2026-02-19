@@ -14,14 +14,14 @@ set -e
 ROBOT_USER="${ROBOT_USER:-pollen}"
 ROBOT_HOST="${ROBOT_HOST:-reachy-mini}"
 ROBOT_PROJECT="${ROBOT_PROJECT:-reachy-mini-cctv}"
-TMUX_SESSION="reachy-cctv"
+TMUX_SESSION="reachy-mini-cctv"
 
 SSH_TARGET="${ROBOT_USER}@${ROBOT_HOST}"
 
 echo "Stopping Reachy Mini CCTV (backend + web) on $SSH_TARGET..."
 ssh "$SSH_TARGET" bash -s << 'ENDSSH'
   STOPPED=""
-  if tmux kill-session -t reachy-cctv 2>/dev/null; then
+  if tmux kill-session -t reachy-mini-cctv 2>/dev/null; then
     STOPPED="tmux session (backend + web)"
   fi
   if pkill -f "python main.py" 2>/dev/null; then

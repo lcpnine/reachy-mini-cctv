@@ -34,5 +34,5 @@ pytest-asyncio>=0.21.0
 httpx>=0.25.0
 
 # Camera (Reachy Mini)
-# For Reachy Mini Wireless use: pip install reachy-mini
-# Optional (legacy): pip install reachy-sdk-api
+# On robot (SSH): pip install reachy-mini[gstreamer]  # needs gi/PyGObject for GStreamer
+# Remote/PC: pip install reachy-mini

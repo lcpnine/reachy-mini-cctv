@@ -86,7 +86,7 @@ case "$MODE" in
         echo "  1. ssh $SSH_TARGET"
         echo "  2. git clone https://github.com/lcpnine/reachy-mini-cctv.git \$REMOTE_DIR"
         echo "  3. cd \$REMOTE_DIR && python3 -m venv venv && source venv/bin/activate"
-        echo "  4. pip install -r requirements.txt reachy-mini"
+        echo "  4. pip install -r requirements.txt 'reachy-mini[gstreamer]'"
         echo "  5. python scripts/setup_models_from_insightface.py"
         echo ""
         echo "Or sync from your machine: ./scripts/run-on-robot.sh --sync"
@@ -100,7 +100,7 @@ case "$MODE" in
       if [[ -z "$ROBOT_VENV" ]] && [[ ! -f "\$REMOTE_DIR/venv/bin/activate" ]]; then
         echo "Error: venv not found. On the robot run:"
         echo "  cd \$REMOTE_DIR && python3 -m venv venv && source venv/bin/activate"
-        echo "  pip install -r requirements.txt reachy-mini"
+        echo "  pip install -r requirements.txt 'reachy-mini[gstreamer]'"
         exit 1
       fi
 
@@ -135,7 +135,8 @@ ENDSSH
     ;;
   attach)
     echo "Starting (or attaching) on $SSH_TARGET..."
-    ssh -t "$SSH_TARGET" bash -s << ENDSSH
+    # -tt forces TTY allocation even when stdin is a pipe (heredoc); needed for tmux attach
+    ssh -tt "$SSH_TARGET" bash -s << ENDSSH
       REMOTE_DIR=\$HOME/$ROBOT_PROJECT
 
       if [[ ! -d "\$REMOTE_DIR" ]] || [[ ! -d "\$REMOTE_DIR/web" ]]; then
@@ -170,7 +171,8 @@ ENDSSH
     ;;
   foreground)
     echo "Running in foreground on $SSH_TARGET (Ctrl+C will stop both)..."
-    ssh -t "$SSH_TARGET" bash -s << ENDSSH
+    # -tt forces TTY allocation when stdin is a pipe (heredoc)
+    ssh -tt "$SSH_TARGET" bash -s << ENDSSH
       REMOTE_DIR=\$HOME/$ROBOT_PROJECT
 
       if [[ ! -d "\$REMOTE_DIR" ]] || [[ ! -d "\$REMOTE_DIR/web" ]]; then

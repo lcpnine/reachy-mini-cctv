@@ -353,7 +353,7 @@ Lower latency and no dependency on your PC once deployed.
    git clone https://github.com/lcpnine/reachy-mini-cctv.git
    cd reachy-mini-cctv
    pip install -r requirements.txt
-   pip install reachy-mini   # Official SDK for Wireless (camera: mini.media.get_frame())
+   pip install "reachy-mini[gstreamer]"   # Required on robot for camera (gi/PyGObject)
    python scripts/setup_models_from_insightface.py
    cp .env.example .env && nano .env   # Set TELEGRAM_*, CAMERA_SOURCE=reachy
    ```
@@ -428,6 +428,26 @@ So: **라즈베리파이에서 Dashboard 서버를 실행해도**, 브라우저�
 - [Reachy Mini Quickstart (run on robot via SSH)](https://huggingface.co/docs/reachy_mini/SDK/quickstart)
 - [Reachy Mini Python SDK (camera, media backends)](https://huggingface.co/docs/reachy_mini/SDK/python-sdk)
 - Media backends: `default` (Lite), `gstreamer` (Lite or Wireless on device), `webrtc` (Wireless, remote)
+
+### Troubleshooting: `ModuleNotFoundError: No module named 'gi'`
+
+When running on the robot with `--camera reachy`, you may see:
+
+```
+ImportError: The 'gi' module is required for GStreamerCamera but could not be imported.
+Please install the GStreamer backend: pip install .[gstreamer]
+```
+
+**Fix:** Install reachy-mini with the GStreamer extra on the robot:
+
+```bash
+ssh pollen@reachy-mini.local
+cd ~/reachy-mini-cctv
+source venv/bin/activate
+pip install "reachy-mini[gstreamer]"
+```
+
+Then run the app again.
 
 ## Documentation
 

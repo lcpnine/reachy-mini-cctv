@@ -307,12 +307,8 @@ When moving the robot, you will work with two main reference frames:
 ### 1. Head Frame
 Located at the base of the head. Used for `goto_target` and `set_target` commands.
 
-[![Reachy Mini Head Frame](https://github.com/pollen-robotics/reachy_mini/raw/develop/docs/assets/head_frame.png)]()
-
 ### 2. World Frame
 Fixed relative to the robot's base. Used for `look_at_world` commands.
-
-[![Reachy Mini World Frame](https://github.com/pollen-robotics/reachy_mini/raw/develop/docs/assets/world_frame.png)]()
 
 ## Safety Limits ⚠️
 
@@ -331,3 +327,153 @@ You can change how the motors behave:
 * **`mini.enable_motors()`**: Stiff. Holds position.
 * **`mini.disable_motors()`**: Limp. No power.
 * **`mini.enable_gravity_compensation()`**: "Soft" mode. You can move the head by hand, and it will stay where you leave it. (Only works with the Placo kinematics backend.)
+
+---
+
+# Development Workflow for Wireless Reachy Mini
+
+Efficient workflows for developing and testing code on the Wireless Reachy Mini.
+
+## Prerequisites
+
+- SSH access to your robot (`ssh pollen@reachy-mini.local`, password: `root`)
+- SSHFS installed on your computer (`sudo apt install sshfs` on Ubuntu/Debian)
+- Your robot's IP address (find it in the dashboard, router, or run `ifconfig` after SSH)
+
+## Quick Cross-Platform Options
+
+### VS Code Remote SSH
+
+VS Code's Remote - SSH extension lets you edit files directly on the robot. Connect to `pollen@reachy-mini.local`, then open any folder. Changes are saved directly on the robot. Works on Windows, macOS, and Linux.
+
+### Rsync
+
+Use `rsync` to sync your local source code to the robot's site-packages:
+
+```bash
+rsync -avz /path/to/your_app/src/your_app/ \
+    pollen@reachy-mini.local:/venvs/apps_venv/lib/python3.12/site-packages/your_app/
+```
+
+Run after each edit to push changes. Add `--delete` to remove files that no longer exist locally.
+
+## Approach A: Clone on Robot, Edit Locally (Recommended)
+
+Your code lives on the robot, but you edit it from your computer.
+
+### Step 1: Clone your repository on the robot
+
+```bash
+ssh pollen@reachy-mini.local
+cd /home/pollen
+git clone https://github.com/YOUR_USER/YOUR_APP.git
+```
+
+### Step 2: Mount the robot's files to your local machine
+
+On your local computer:
+
+```bash
+mkdir -p ~/wireless_dev
+sshfs pollen@reachy-mini.local:/home/pollen/YOUR_APP ~/wireless_dev \
+    -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3
+```
+
+Open `~/wireless_dev` in your IDE and edit as if local.
+
+### Step 3: Install and run your code on the robot
+
+```bash
+ssh pollen@reachy-mini.local
+cd /home/pollen/YOUR_APP
+
+# Install in editable mode (changes apply immediately):
+/venvs/apps_venv/bin/pip install -e .
+
+# Run your app:
+/venvs/apps_venv/bin/python -m YOUR_MODULE.main
+# Or run directly:
+/venvs/apps_venv/bin/python your_script.py
+```
+
+### Step 4: Unmount when done
+
+```bash
+fusermount -u ~/wireless_dev
+```
+
+## Approach B: Override Installed App Sources
+
+Modify an app already installed via the dashboard by mounting your local files over site-packages.
+
+### Step 1: Locate the installed app
+
+Apps are installed in:
+```
+/venvs/apps_venv/lib/python3.12/site-packages/YOUR_APP_NAME/
+```
+
+### Step 2: Mount your local source over the installed location
+
+Run **on the robot**:
+
+```bash
+ssh pollen@reachy-mini.local
+
+sshfs YOUR_USER@YOUR_PC_IP:/path/to/your_app/src/your_app \
+    /venvs/apps_venv/lib/python3.12/site-packages/YOUR_APP_NAME \
+    -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3
+```
+
+**Important:** Mount only the content of your `src/your_app/` directory, not the entire repository.
+
+## Approach C: Mount Local Source and Run Directly
+
+Mount your local source onto the robot and run without pip install.
+
+### Step 1: Mount your local source onto the robot
+
+Run **on the robot**:
+
+```bash
+ssh pollen@reachy-mini.local
+mkdir -p /home/pollen/my_app_mount
+
+sshfs YOUR_USER@YOUR_PC_IP:/path/to/your_app /home/pollen/my_app_mount \
+    -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3
+```
+
+### Step 2: Run your app directly
+
+```bash
+cd /home/pollen/my_app_mount
+/venvs/apps_venv/bin/python main.py
+```
+
+## Installing a Specific Branch or Version
+
+```bash
+ssh pollen@reachy-mini.local
+/venvs/apps_venv/bin/python -m pip install --force-reinstall \
+    "git+https://github.com/pollen-robotics/MY_AWESOME_APP.git@MY_AWESOME_BRANCH"
+```
+
+Replace `MY_AWESOME_BRANCH` with a branch name, tag, or commit hash.
+
+## Common Pitfalls
+
+**Slow pip install over SSHFS:** If you mount from your computer *to* the robot, pip install will be extremely slow. Use Approach A (files on robot, mount to your computer) or run manually with `python -m your_module`.
+
+**Wrong mount point for site-packages:** Site-packages expects the package directory directly (`your_app/__init__.py`, `main.py`), not the repo structure. Mount only the inner `src/your_app/` content.
+
+## Quick Reference
+
+| Task | Command |
+|------|---------|
+| SSH to robot | `ssh pollen@reachy-mini.local` |
+| Stop daemon | `sudo systemctl stop reachy-mini-daemon` |
+| Start daemon | `sudo systemctl start reachy-mini-daemon` |
+| View daemon logs | `journalctl -u reachy-mini-daemon -f` |
+| Check robot status | `reachyminios_check` |
+| Mount robot files locally | `sshfs pollen@IP:/path ~/local_mount -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3` |
+| Unmount | `fusermount -u ~/local_mount` |

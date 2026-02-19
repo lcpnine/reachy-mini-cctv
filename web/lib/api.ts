@@ -2,7 +2,7 @@
  * API client for Reachy Mini CCTV backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8501';
 
 /** Live camera MJPEG stream URL for use in img src */
 export function getCameraStreamUrl(): string {

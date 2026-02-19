@@ -51,8 +51,8 @@ nano .env  # Edit with your Telegram credentials
 
 Access the application:
 - **Web Dashboard**: http://localhost:3000
-- **API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
+- **API**: http://localhost:8501
+- **API Docs**: http://localhost:8501/docs
 
 ## Installation (Manual)
 
@@ -128,7 +128,7 @@ COOLDOWN_SECONDS=30
 
 # API
 API_HOST=0.0.0.0
-API_PORT=8000
+API_PORT=8501
 ```
 
 ## Usage
@@ -156,20 +156,20 @@ python scripts/register_face.py --name "John Doe" --image path/to/photo.jpg
 **API:**
 ```bash
 # Get recent events
-curl http://localhost:8000/api/events?limit=10
+curl http://localhost:8501/api/events?limit=10
 
 # Get event statistics
-curl http://localhost:8000/api/events/stats
+curl http://localhost:8501/api/events/stats
 
 # Get registered users
-curl http://localhost:8000/api/users
+curl http://localhost:8501/api/users
 ```
 
 ### Viewing Photos
 
 Unknown visitor photos are stored in `data/photos/` and accessible via:
 - Web dashboard Photos page
-- API endpoint: `http://localhost:8000/api/photos/{filename}`
+- API endpoint: `http://localhost:8501/api/photos/{filename}`
 
 ## Docker Commands
 
@@ -249,8 +249,8 @@ sudo journalctl -u reachy-mini-cctv -f
 ## API Documentation
 
 Interactive API documentation available at:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: http://localhost:8501/docs
+- **ReDoc**: http://localhost:8501/redoc
 
 Key endpoints:
 - `POST /api/users` - Register a new user
@@ -355,6 +355,46 @@ Your Python code runs on your machine; the robot sends camera over the network (
 3. **Point the app at the robot**: Use `ReachyMini(connection_mode="network")` and `media_backend="webrtc"` so camera comes from the robot. The REST daemon on the robot is at `http://reachy-mini.local:8000` (or the robot’s IP).
 
 **Note:** This codebase’s Reachy camera layer supports both the legacy `reachy_sdk_api` and the official `reachy_mini` SDK. For Wireless, the `reachy_mini` SDK with the appropriate `media_backend` (`gstreamer` on device, `webrtc` when remote) is used.
+
+### Run/stop from your computer (scripts)
+
+From your machine you can start or stop the app on the robot without opening an SSH shell:
+
+```bash
+# Start on robot (runs in tmux; keeps running after you disconnect)
+./scripts/run-on-robot.sh
+
+# Attach to the running session to see logs
+./scripts/run-on-robot.sh --attach
+
+# Run in foreground (exits when SSH disconnects)
+./scripts/run-on-robot.sh --foreground
+
+# Stop the app on the robot
+./scripts/stop-on-robot.sh
+```
+
+Configure robot host/user with environment variables if needed:
+
+```bash
+export ROBOT_USER=pollen
+export ROBOT_HOST=reachy-mini.local
+export ROBOT_PROJECT=reachy-mini-cctv
+./scripts/run-on-robot.sh
+```
+
+The robot must have the project and venv set up, and `tmux` installed (`sudo apt install tmux`).
+
+### Where to run the Dashboard
+
+The **backend (API + camera)** runs on the robot. The **Dashboard (Next.js)** is just a web page: it can run on the robot or on your computer. In both cases you view it **from your computer’s browser**.
+
+| Where Dashboard runs | How you view it | API URL setting |
+|----------------------|-----------------|-----------------|
+| **On the robot**     | Open **http://\<robot-IP\>:3000** in your browser (e.g. `http://reachy-mini.local:3000`). The page is served by the robot but displayed on your PC. | Build/serve the web app with `NEXT_PUBLIC_API_URL=http://reachy-mini.local:8501` (or the robot’s IP) so the browser calls the API on the robot. |
+| **On your computer** | Open **http://localhost:3000** in your browser. | Set `NEXT_PUBLIC_API_URL=http://reachy-mini.local:8501` (or robot IP) in `web/.env.local` so the dashboard talks to the robot’s API. |
+
+So: **라즈베리파이에서 Dashboard 서버를 실행해도**, 브라우저는 **내 컴퓨터**에서 `http://로봇IP:3000`으로 접속하면 됩니다. 서버가 라즈베리파이에 있어도 같은 네트워크라면 PC에서 해당 주소로 접속해 대시보드를 볼 수 있습니다.
 
 ### References
 

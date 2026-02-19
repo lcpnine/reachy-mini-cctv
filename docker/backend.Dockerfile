@@ -54,11 +54,11 @@ RUN mkdir -p /app/data/photos && \
     chmod -R 755 /app/data
 
 # Expose API port
-EXPOSE 8000
+EXPOSE 8501
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8501/health || exit 1
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

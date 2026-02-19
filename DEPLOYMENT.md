@@ -122,11 +122,11 @@ python main.py
 You should see:
 - System initialization messages
 - Camera connection
-- API server starting on http://0.0.0.0:8000
+- API server starting on http://0.0.0.0:8501
 
 Test the API:
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8501/health
 ```
 
 Test the web dashboard:
@@ -210,7 +210,7 @@ npm start
 
 Edit `web/.env.local`:
 ```
-NEXT_PUBLIC_API_URL=http://your-pi-ip:8000
+NEXT_PUBLIC_API_URL=http://your-pi-ip:8501
 ```
 
 ## User Registration
@@ -232,7 +232,7 @@ The script will:
 
 ```bash
 # API health check
-curl http://localhost:8000/health
+curl http://localhost:8501/health
 
 # Database stats
 sqlite3 data/cctv.db "SELECT COUNT(*) FROM users;"
@@ -365,7 +365,7 @@ CAMERA_FPS = 15  # Lower FPS reduces load
 
 3. **API security:** Use firewall rules to restrict access:
    ```bash
-   sudo ufw allow from 192.168.1.0/24 to any port 8000
+   sudo ufw allow from 192.168.1.0/24 to any port 8501
    ```
 
 4. **Photo storage:** Photos contain sensitive biometric data - handle carefully

@@ -16,7 +16,7 @@ RUN npm ci --only=production
 COPY . .
 
 # Build argument for API URL
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG NEXT_PUBLIC_API_URL=http://localhost:8501
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Build the application

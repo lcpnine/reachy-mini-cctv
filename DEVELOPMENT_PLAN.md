@@ -738,8 +738,8 @@ def test_sse_stream(client):
 - Install system dependencies: `libgl1`, `libglib2.0-0` (OpenCV), `libsqlite3-0`
 - Copy `requirements.txt` and install Python dependencies
 - Copy application source (`core/`, `db/`, `camera/`, `notifications/`, `api/`, `scripts/`, `main.py`)
-- Set working directory and expose port 8000
-- Entrypoint: `uvicorn api.main:app --host 0.0.0.0 --port 8000`
+- Set working directory and expose port 8501
+- Entrypoint: `uvicorn api.main:app --host 0.0.0.0 --port 8501`
 - Multi-stage build to keep the final image small (build stage for compiling native deps, runtime stage for running)
 
 **Done Criteria:**
@@ -750,8 +750,8 @@ def test_sse_stream(client):
 **Test:**
 ```bash
 docker build -f docker/backend.Dockerfile -t reachy-mini-cctv-backend .
-docker run --rm -d -p 8000:8000 --name test-backend reachy-mini-cctv-backend
-curl -f http://localhost:8000/health
+docker run --rm -d -p 8501:8501 --name test-backend reachy-mini-cctv-backend
+curl -f http://localhost:8501/health
 docker stop test-backend
 ```
 
@@ -762,7 +762,7 @@ docker stop test-backend
 - Multi-stage build:
   - Stage 1 (`node:24.13.1-alpine`): install deps, run `npm run build`
   - Stage 2 (`node:24.13.1-alpine`): copy build output, run `next start`
-- Set `NEXT_PUBLIC_API_URL` as a build arg (default: `http://localhost:8000`)
+- Set `NEXT_PUBLIC_API_URL` as a build arg (default: `http://localhost:8501`)
 - Expose port 3000
 
 **Done Criteria:**
@@ -773,7 +773,7 @@ docker stop test-backend
 **Test:**
 ```bash
 docker build -f docker/frontend.Dockerfile -t reachy-mini-cctv-web ./web \
-  --build-arg NEXT_PUBLIC_API_URL=http://backend:8000
+  --build-arg NEXT_PUBLIC_API_URL=http://backend:8501
 docker run --rm -d -p 3000:3000 --name test-web reachy-mini-cctv-web
 curl -f http://localhost:3000
 docker stop test-web
@@ -788,13 +788,13 @@ docker stop test-web
     - Volumes: `./data:/app/data` (SQLite DB, FAISS index, photos)
     - Volumes: `./core/models:/app/core/models:ro` (ONNX models, read-only)
     - Environment: loads from `.env`
-    - Ports: `8000:8000`
+    - Ports: `8501:8501`
     - Restart policy: `unless-stopped`
     - Device access: map `/dev/video0` or Reachy Mini USB device for camera access (configurable)
   - `web`: builds from `docker/frontend.Dockerfile` (context: `./web`)
     - Depends on: `backend`
     - Ports: `3000:3000`
-    - Build args: `NEXT_PUBLIC_API_URL=http://backend:8000`
+    - Build args: `NEXT_PUBLIC_API_URL=http://backend:8501`
     - Restart policy: `unless-stopped`
 - Named volumes for persistent data
 - Network: default bridge network (web → backend via service name)
@@ -809,7 +809,7 @@ services:
       context: .
       dockerfile: docker/backend.Dockerfile
     ports:
-      - "8000:8000"
+      - "8501:8501"
     volumes:
       - app-data:/app/data
       - ./core/models:/app/core/models:ro
@@ -824,7 +824,7 @@ services:
       context: ./web
       dockerfile: ../docker/frontend.Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://backend:8000
+        NEXT_PUBLIC_API_URL: http://backend:8501
     ports:
       - "3000:3000"
     depends_on:
@@ -847,7 +847,7 @@ volumes:
 docker compose up --build -d
 
 # Verify backend
-curl -f http://localhost:8000/health
+curl -f http://localhost:8501/health
 
 # Verify web
 curl -f http://localhost:3000
@@ -855,7 +855,7 @@ curl -f http://localhost:3000
 # Verify data persistence
 docker compose down
 docker compose up -d
-curl -f http://localhost:8000/api/users  # Data should still exist
+curl -f http://localhost:8501/api/users  # Data should still exist
 
 # Clean teardown
 docker compose down -v
@@ -869,7 +869,7 @@ docker compose down -v
   ```yaml
   backend:
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8501/health"]
       interval: 30s
       timeout: 10s
       retries: 3

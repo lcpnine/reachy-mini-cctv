@@ -15,7 +15,7 @@
 #   - Node.js 24.x on the robot (for web dashboard):
 #       curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 #       sudo apt-get install -y nodejs
-#   - tmux optional (falls back to nohup if not installed)
+#   - tmux optional (falls back to nohup if not installed or if tmux fails)
 #
 
 set -e
@@ -60,24 +60,33 @@ case "$MODE" in
     ssh "$SSH_TARGET" bash -s << ENDSSH
       set -e
       REMOTE_DIR=\$HOME/$ROBOT_PROJECT
+
+      run_nohup() {
+        cd "\$REMOTE_DIR" && $ACTIVATE && nohup python main.py --camera reachy > $LOG_FILE 2>&1 &
+        cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup npm start > $WEB_LOG_FILE 2>&1 &
+        echo "Started (nohup)."
+        echo "  - API:  http://$ROBOT_HOST:8501"
+        echo "  - Web:  http://$ROBOT_HOST:3000"
+        echo "Logs: ssh $SSH_TARGET tail -f $LOG_FILE"
+      }
+
       if command -v tmux &>/dev/null; then
         if tmux has-session -t $TMUX_SESSION 2>/dev/null; then
           echo "Session already running. Attach: ssh $SSH_TARGET -t tmux attach -t $TMUX_SESSION"
         else
-          tmux new-session -d -s $TMUX_SESSION -n backend "$RUN_CMD"
-          tmux new-window -t $TMUX_SESSION -n web "$WEB_CMD"
-          echo "Started backend + web (tmux)."
-          echo "  - API:  http://$ROBOT_HOST:8501"
-          echo "  - Web:  http://$ROBOT_HOST:3000"
-          echo "Attach to logs: ssh $SSH_TARGET -t tmux attach -t $TMUX_SESSION"
+          if tmux new-session -d -s $TMUX_SESSION -n backend "$RUN_CMD" 2>/dev/null && \
+             tmux new-window -t $TMUX_SESSION -n web "$WEB_CMD" 2>/dev/null; then
+            echo "Started backend + web (tmux)."
+            echo "  - API:  http://$ROBOT_HOST:8501"
+            echo "  - Web:  http://$ROBOT_HOST:3000"
+            echo "Attach to logs: ssh $SSH_TARGET -t tmux attach -t $TMUX_SESSION"
+          else
+            echo "tmux failed (e.g. no server / permission), falling back to nohup."
+            run_nohup
+          fi
         fi
       else
-        cd "\$REMOTE_DIR" && $ACTIVATE && nohup python main.py --camera reachy > $LOG_FILE 2>&1 &
-        cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup npm start > $WEB_LOG_FILE 2>&1 &
-        echo "Started (nohup, tmux not installed)."
-        echo "  - API:  http://$ROBOT_HOST:8501"
-        echo "  - Web:  http://$ROBOT_HOST:3000"
-        echo "Logs: ssh $SSH_TARGET tail -f $LOG_FILE"
+        run_nohup
       fi
 ENDSSH
     ;;
@@ -85,11 +94,19 @@ ENDSSH
     echo "Starting (or attaching) on $SSH_TARGET..."
     ssh -t "$SSH_TARGET" bash -s << ENDSSH
       REMOTE_DIR=\$HOME/$ROBOT_PROJECT
+
       if command -v tmux &>/dev/null; then
-        tmux has-session -t $TMUX_SESSION 2>/dev/null || {
-          tmux new-session -d -s $TMUX_SESSION -n backend "$RUN_CMD"
-          tmux new-window -t $TMUX_SESSION -n web "$WEB_CMD"
-        }
+        if ! tmux has-session -t $TMUX_SESSION 2>/dev/null; then
+          if tmux new-session -d -s $TMUX_SESSION -n backend "$RUN_CMD" 2>/dev/null; then
+            tmux new-window -t $TMUX_SESSION -n web "$WEB_CMD" 2>/dev/null || true
+          else
+            echo "tmux failed, using nohup + tail..."
+            cd "\$REMOTE_DIR" && $ACTIVATE && nohup python main.py --camera reachy > $LOG_FILE 2>&1 &
+            cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup npm start > $WEB_LOG_FILE 2>&1 &
+            sleep 1
+            exec tail -f $LOG_FILE
+          fi
+        fi
         exec tmux attach -t $TMUX_SESSION
       else
         cd "\$REMOTE_DIR" && $ACTIVATE && nohup python main.py --camera reachy > $LOG_FILE 2>&1 &

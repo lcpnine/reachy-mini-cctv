@@ -8,6 +8,7 @@
 #   ./scripts/run-on-robot.sh              # start in tmux (detached)
 #   ./scripts/run-on-robot.sh --attach      # start and attach to see logs
 #   ./scripts/run-on-robot.sh --foreground  # run in foreground (exits when SSH ends)
+#   ./scripts/run-on-robot.sh --sync        # rsync project to robot, then start
 #
 # Prerequisites:
 #   - SSH access to the robot (e.g. ssh-copy-id pollen@reachy-mini)
@@ -48,10 +49,26 @@ SSH_TARGET="${ROBOT_USER}@${ROBOT_HOST}"
 
 # --- Options ---
 MODE="background"
-if [[ "${1:-}" == "--attach" ]]; then
-  MODE="attach"
-elif [[ "${1:-}" == "--foreground" ]]; then
-  MODE="foreground"
+SYNC_FIRST=false
+for arg in "$@"; do
+  case "$arg" in
+    --attach)     MODE="attach" ;;
+    --foreground) MODE="foreground" ;;
+    --sync)       SYNC_FIRST=true ;;
+  esac
+done
+
+# Project root (parent of scripts/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Pre-flight: sync project to robot if requested
+if [[ "$SYNC_FIRST" == true ]]; then
+  echo "Syncing project to $SSH_TARGET:~/$ROBOT_PROJECT/ ..."
+  rsync -avz --exclude '.git' --exclude 'node_modules' --exclude '.next' --exclude 'venv' \
+    --exclude '__pycache__' --exclude '*.pyc' --exclude 'data/' \
+    "$PROJECT_ROOT/" "$SSH_TARGET:~/$ROBOT_PROJECT/"
+  echo "Sync done."
 fi
 
 case "$MODE" in
@@ -60,6 +77,31 @@ case "$MODE" in
     ssh "$SSH_TARGET" bash -s << ENDSSH
       set -e
       REMOTE_DIR=\$HOME/$ROBOT_PROJECT
+
+      if [[ ! -d "\$REMOTE_DIR" ]]; then
+        echo "Error: Project directory \$REMOTE_DIR does not exist on the robot."
+        echo ""
+        echo "Set up the project first:"
+        echo "  1. ssh $SSH_TARGET"
+        echo "  2. git clone https://github.com/lcpnine/reachy-mini-cctv.git \$REMOTE_DIR"
+        echo "  3. cd \$REMOTE_DIR && python3 -m venv venv && source venv/bin/activate"
+        echo "  4. pip install -r requirements.txt reachy-mini"
+        echo "  5. python scripts/setup_models_from_insightface.py"
+        echo ""
+        echo "Or sync from your machine: ./scripts/run-on-robot.sh --sync"
+        echo "Or if project is elsewhere, set: ROBOT_PROJECT=your-folder ./scripts/run-on-robot.sh"
+        exit 1
+      fi
+      if [[ ! -d "\$REMOTE_DIR/web" ]]; then
+        echo "Error: \$REMOTE_DIR/web does not exist."
+        exit 1
+      fi
+      if [[ -z "$ROBOT_VENV" ]] && [[ ! -f "\$REMOTE_DIR/venv/bin/activate" ]]; then
+        echo "Error: venv not found. On the robot run:"
+        echo "  cd \$REMOTE_DIR && python3 -m venv venv && source venv/bin/activate"
+        echo "  pip install -r requirements.txt reachy-mini"
+        exit 1
+      fi
 
       run_nohup() {
         cd "\$REMOTE_DIR" && $ACTIVATE && nohup python main.py --camera reachy > $LOG_FILE 2>&1 &
@@ -95,6 +137,15 @@ ENDSSH
     ssh -t "$SSH_TARGET" bash -s << ENDSSH
       REMOTE_DIR=\$HOME/$ROBOT_PROJECT
 
+      if [[ ! -d "\$REMOTE_DIR" ]] || [[ ! -d "\$REMOTE_DIR/web" ]]; then
+        echo "Error: Project \$REMOTE_DIR (or web/) not found. Run: ./scripts/run-on-robot.sh --sync"
+        exit 1
+      fi
+      if [[ -z "$ROBOT_VENV" ]] && [[ ! -f "\$REMOTE_DIR/venv/bin/activate" ]]; then
+        echo "Error: venv not found. Set up Python venv on the robot first."
+        exit 1
+      fi
+
       if command -v tmux &>/dev/null; then
         if ! tmux has-session -t $TMUX_SESSION 2>/dev/null; then
           if tmux new-session -d -s $TMUX_SESSION -n backend "$RUN_CMD" 2>/dev/null; then
@@ -120,6 +171,16 @@ ENDSSH
     echo "Running in foreground on $SSH_TARGET (Ctrl+C will stop both)..."
     ssh -t "$SSH_TARGET" bash -s << ENDSSH
       REMOTE_DIR=\$HOME/$ROBOT_PROJECT
+
+      if [[ ! -d "\$REMOTE_DIR" ]] || [[ ! -d "\$REMOTE_DIR/web" ]]; then
+        echo "Error: Project \$REMOTE_DIR (or web/) not found. Run: ./scripts/run-on-robot.sh --sync"
+        exit 1
+      fi
+      if [[ -z "$ROBOT_VENV" ]] && [[ ! -f "\$REMOTE_DIR/venv/bin/activate" ]]; then
+        echo "Error: venv not found. Set up Python venv on the robot first."
+        exit 1
+      fi
+
       cleanup() { kill \$BACKEND_PID \$WEB_PID 2>/dev/null; exit 0; }
       trap cleanup INT TERM
       cd "\$REMOTE_DIR" && $ACTIVATE && python main.py --camera reachy &

@@ -40,8 +40,8 @@ fi
 RUN_CMD="REMOTE_DIR=$REMOTE_DIR_EXPR; cd \"\$REMOTE_DIR\" && $ACTIVATE && python main.py --camera reachy"
 
 # Web: ensure build exists, then npm start
-# Bind to 0.0.0.0 so the web server is reachable from your PC at http://<robot-IP>:3000
-WEB_CMD="REMOTE_DIR=$REMOTE_DIR_EXPR; cd \"\$REMOTE_DIR/web\" && (test -d .next || (npm install && npm run build)) && HOSTNAME=0.0.0.0 npm start"
+# -H 0.0.0.0 required so the web server is reachable from your PC at http://<robot-IP>:3000
+WEB_CMD="REMOTE_DIR=$REMOTE_DIR_EXPR; cd \"\$REMOTE_DIR/web\" && (test -d .next || (npm install && npm run build)) && npm start -- -H 0.0.0.0"
 
 LOG_FILE="/tmp/reachy-mini-cctv.log"
 WEB_LOG_FILE="/tmp/reachy-mini-cctv-web.log"
@@ -106,7 +106,7 @@ case "$MODE" in
 
       run_nohup() {
         cd "\$REMOTE_DIR" && $ACTIVATE && nohup python main.py --camera reachy > $LOG_FILE 2>&1 &
-        cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup env HOSTNAME=0.0.0.0 npm start > $WEB_LOG_FILE 2>&1 &
+        cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup npm start -- -H 0.0.0.0 > $WEB_LOG_FILE 2>&1 &
         echo "Started (nohup)."
         echo "  - API:  http://$ROBOT_HOST:8501"
         echo "  - Web:  http://$ROBOT_HOST:3000"
@@ -155,7 +155,7 @@ ENDSSH
           else
             echo "tmux failed, using nohup + tail..."
             cd "\$REMOTE_DIR" && $ACTIVATE && nohup python main.py --camera reachy > $LOG_FILE 2>&1 &
-            cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup env HOSTNAME=0.0.0.0 npm start > $WEB_LOG_FILE 2>&1 &
+            cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup npm start -- -H 0.0.0.0 > $WEB_LOG_FILE 2>&1 &
             sleep 1
             exec tail -f $LOG_FILE
           fi
@@ -163,7 +163,7 @@ ENDSSH
         exec tmux attach -t $TMUX_SESSION
       else
         cd "\$REMOTE_DIR" && $ACTIVATE && nohup python main.py --camera reachy > $LOG_FILE 2>&1 &
-        cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup env HOSTNAME=0.0.0.0 npm start > $WEB_LOG_FILE 2>&1 &
+        cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && nohup npm start -- -H 0.0.0.0 > $WEB_LOG_FILE 2>&1 &
         sleep 1
         exec tail -f $LOG_FILE
       fi
@@ -188,7 +188,7 @@ ENDSSH
       trap cleanup INT TERM
       cd "\$REMOTE_DIR" && $ACTIVATE && python main.py --camera reachy &
       BACKEND_PID=\$!
-      cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && env HOSTNAME=0.0.0.0 npm start &
+      cd "\$REMOTE_DIR/web" && (test -d .next || (npm install && npm run build)) && npm start -- -H 0.0.0.0 &
       WEB_PID=\$!
       wait
 ENDSSH
